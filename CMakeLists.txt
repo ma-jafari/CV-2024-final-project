@@ -7,10 +7,18 @@ project(BilliardAnalysis)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# Add the include directory
+#OpenCV package
+find_package( OpenCV REQUIRED )                              
+
+# Add the include directories
 include_directories(include)
+include_directories( ${OpenCV_INCLUDE_DIRS})
 
 # Add the executable
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 add_executable(BilliardAnalysis ${SOURCES})
 
+# Link OpenCV
+target_link_libraries(BilliardAnalysis ${OpenCV_LIBS})
+
+message("${OpenCV_INCLUDE_DIRS}")

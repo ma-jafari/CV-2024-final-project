@@ -22,14 +22,14 @@ int main() {
                     "game2_clip1", "game2_clip2", "game3_clip1", "game3_clip2",
                     "game4_clip1", "game4_clip2"};
   RNG rng(12);
-  float thresh = 100;
+  float thresh = 80;
 
   for (int index = 0; index < 10; index++) {
     Mat in = cv::imread(string("data/") + names[index] +
                         string("/frames/frame_first.png"));
 
     medianBlur(in, in, 7);
-    in -= Scalar(255, 0, 0);
+    in -= Scalar(255, 0, 255);
     threshold(in, in, 100, 255, CV_8UC1);
     imshow("removed blue", in);
     Mat canny_output;
@@ -50,10 +50,11 @@ int main() {
     imshow("GContours", greycontours);
     Mat final = in.clone();
     vector<Vec2f> lines;
-    HoughLines(greycontours, lines, 1, CV_PI / 180, 300);
+    // FIX: 1.3f to give some leeway for not perfectly aligned contours
+    HoughLines(greycontours, lines, 1.3f, CV_PI / 180, 300);
     vector<Vec2f> centers;
     Mat labels;
-    kmeans(lines, MIN(15, lines.size()), labels,
+    kmeans(lines, MIN(10, lines.size()), labels,
            TermCriteria(TermCriteria::EPS, 10, 1.0), 3, KMEANS_PP_CENTERS,
            centers);
 
@@ -67,7 +68,7 @@ int main() {
       pt1.y = cvRound(y0 + 1000 * (a));
       pt2.x = cvRound(x0 - 1000 * (-b));
       pt2.y = cvRound(y0 - 1000 * (a));
-      line(final, pt1, pt2, Scalar(0, 255), 3, LINE_AA);
+      line(final, pt1, pt2, Scalar(255, 0, 255), 3, LINE_AA);
     }
     imshow("hough", final);
     waitKey(0);

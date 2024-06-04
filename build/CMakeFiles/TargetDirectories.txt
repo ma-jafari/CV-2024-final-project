@@ -1,3 +1,0 @@
-/home/fogliodicarta/Desktop/CV-2024-final-project/build/CMakeFiles/BilliardAnalysis.dir
-/home/fogliodicarta/Desktop/CV-2024-final-project/build/CMakeFiles/edit_cache.dir
-/home/fogliodicarta/Desktop/CV-2024-final-project/build/CMakeFiles/rebuild_cache.dir

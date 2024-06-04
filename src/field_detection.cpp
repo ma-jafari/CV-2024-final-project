@@ -77,6 +77,7 @@ cv::Mat detect_field(const cv::Mat &input_image) {
   Mat filled = Mat::zeros(in.rows, in.cols, in.type());
   Scalar newVal = Scalar(255);
 
+  // FIX: Use image moments to estimate center of pool table
   int area = floodFill(filled, mask, Point(in.cols / 2, in.rows / 2),
                        Scalar(0, 255, 255), nullptr, Scalar(), Scalar());
   // imshow("Segmented pool table", filled);

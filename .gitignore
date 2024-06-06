@@ -8,3 +8,6 @@ cmake_install.cmake
 .clangd
 BilliardAnalysis
 BilliardAnalysis.exe
+*.vim
+compile_commands.json
+.cache/

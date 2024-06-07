@@ -12,7 +12,7 @@
 #include <strings.h>
 #include <vector>
 
-#define PRINTS
+#define NO_PRINTS
 
 cv::Scalar colori[4] = {cv::Scalar(255, 0, 0), cv::Scalar(0, 255, 0),
                         cv::Scalar(0, 0, 255), cv::Scalar(0, 255, 255)};
@@ -101,9 +101,35 @@ int get_strictest_line(const vector<float> &rhos, const vector<float> &thetas,
   }
   return index_closest_line;
 }
+void draw_hough_line(Mat &image, float rho, float theta) {
+#ifdef PRINTS
+  Point pt1, pt2;
+  float a = cos(theta), b = sin(theta);
+  float x0 = a * rho, y0 = b * rho;
+  pt1.x = cvRound(x0 + 1000 * (-b));
+  pt1.y = cvRound(y0 + 1000 * (a));
+  pt2.x = cvRound(x0 - 1000 * (-b));
+  pt2.y = cvRound(y0 - 1000 * (a));
+  line(image, pt1, pt2, Scalar(255, 0, 255), 3, LINE_AA);
+#endif
+}
+Vec2i intersect_hough_lines(Vec2f line1, Vec2f line2) {
+
+  cv::Mat A = (Mat_<double>(2, 2) << cos(line1[1]), sin(line1[1]),
+               cos(line2[1]), sin(line2[1]));
+  cv::Mat b = (Mat_<double>(2, 1) << line1[0], line2[0]);
+
+  cv::Mat x;
+  cv::solve(A, b, x);
+
+  int x0 = static_cast<int>(std::round(x.at<double>(0, 0)));
+  int y0 = static_cast<int>(std::round(x.at<double>(1, 0)));
+
+  return Vec2i(x0, y0);
+}
 } // namespace
 
-void detect_field(const cv::Mat &input_image) {
+Vec4Points detect_field(const cv::Mat &input_image) {
   using namespace cv;
   using namespace std;
   Mat in = input_image.clone();
@@ -121,6 +147,7 @@ void detect_field(const cv::Mat &input_image) {
   Mat mask = Mat::zeros(in.rows + 2, in.cols + 2, CV_8U);
   vector<Vec2f> lines;
   vector<float> thetas;
+  vector<float> rhos;
   get_field_mask(graycontours, false, mask, lines);
   // TODO:
 
@@ -130,14 +157,24 @@ void detect_field(const cv::Mat &input_image) {
   constexpr int n_clusters = 2;
   vector<int> labels;
   get_line_clusters(thetas, labels);
+  vector<float> rhos_1;
+  vector<float> thetas_1;
+  vector<float> rhos_2;
+  vector<float> thetas_2;
 
+  for (int i = 0; i < lines.size(); ++i) {
+    if (labels[i] == 0) {
+      rhos_1.push_back(lines[i][0]);
+      thetas_1.push_back(lines[i][1]);
+    } else {
+      rhos_2.push_back(lines[i][0]);
+      thetas_2.push_back(lines[i][1]);
+    }
+  }
 #ifdef PRINTS
-
+  // FIRST SUBDIVISION
   Mat color_lines2 = Mat::zeros(in.rows, in.cols, in.type());
-  ;
-
-  for (size_t i = 0; i < thetas.size(); i++) {
-
+  for (size_t i = 0; i < thetas.size(); ++i) {
     float rho = lines[i][0], theta = lines[i][1];
     Point pt1, pt2;
     double a = cos(theta), b = sin(theta);
@@ -150,46 +187,29 @@ void detect_field(const cv::Mat &input_image) {
   }
   imshow("first subdivision", color_lines2);
 #endif
-  // for (auto l : labels) {
-  //   cout << l << endl;
-  // }
-  vector<float> groupA;
-  vector<float> groupA_thetas;
-  vector<float> groupB;
-  vector<float> groupB_thetas;
-  for (int i = 0; i < lines.size(); ++i) {
-    if (labels[i] == 0) {
-      groupA.push_back(lines[i][0]);
-      groupA_thetas.push_back(lines[i][1]);
-    } else {
-      groupB.push_back(lines[i][0]);
-      groupB_thetas.push_back(lines[i][1]);
-    }
-  }
-  //  cout << "A:" << groupA.size() << endl;
-  //  cout << "B:" << groupB.size() << endl;
 
   Mat color_lines = Mat::zeros(in.rows, in.cols, in.type());
-  get_line_clusters(groupA, labels);
+  const Point image_center(in.cols / 2, in.rows / 2);
 
-  vector<float> groupC;
-  vector<float> groupC_thetas;
-  vector<float> groupD;
-  vector<float> groupD_thetas;
-  for (int i = 0; i < groupA.size(); ++i) {
-    cout << labels[i] << endl;
+  get_line_clusters(rhos_1, labels);
+  vector<float> rhos_A;
+  vector<float> thetas_A;
+  vector<float> rhos_B;
+  vector<float> thetas_B;
+  for (int i = 0; i < rhos_1.size(); ++i) {
     if (labels[i] == 0) {
-      groupC.push_back(groupA[i]);
-      groupC_thetas.push_back(groupA_thetas[i]);
+      rhos_A.push_back(rhos_1[i]);
+      thetas_A.push_back(thetas_1[i]);
     } else {
-      groupD.push_back(groupA[i]);
-      groupD_thetas.push_back(groupA_thetas[i]);
+      rhos_B.push_back(rhos_1[i]);
+      thetas_B.push_back(thetas_1[i]);
     }
   }
-  cout << "size group C" << groupC_thetas.size() << endl;
+
 #ifdef PRINTS
-  for (size_t i = 0; i < groupA.size(); i++) {
-    float rho = groupA[i], theta = groupA_thetas[i];
+  // A AND B
+  for (size_t i = 0; i < rhos_1.size(); i++) {
+    float rho = rhos_1[i], theta = thetas_1[i];
     Point pt1, pt2;
     double a = cos(theta), b = sin(theta);
     double x0 = a * rho, y0 = b * rho;
@@ -200,50 +220,27 @@ void detect_field(const cv::Mat &input_image) {
     cout << labels[i] << endl;
     line(color_lines, pt1, pt2, colori[2 + labels[i]], 3, LINE_AA);
   }
+  circle(color_lines, image_center, 10, Scalar(255, 0, 255));
 #endif
 
-  const Point image_center(color_lines.cols / 2, color_lines.rows / 2);
-  circle(color_lines, image_center, 10, Scalar(255, 0, 255));
-
-  int index_closest_line =
-      get_strictest_line(groupC, groupC_thetas, image_center);
-  float rho = groupC[index_closest_line],
-        theta = groupC_thetas[index_closest_line];
-  Point pt1, pt2;
-  double a = cos(theta), b = sin(theta);
-  cout << "a " << a << endl;
-  cout << "b " << b << endl;
-  cout << "rho " << rho << endl;
-  cout << "---------------------------------" << endl;
-  double x0 = a * rho, y0 = b * rho;
-  pt1.x = cvRound(x0 + 1000 * (-b));
-  pt1.y = cvRound(y0 + 1000 * (a));
-  pt2.x = cvRound(x0 - 1000 * (-b));
-  pt2.y = cvRound(y0 - 1000 * (a));
-  line(color_lines, pt1, pt2, Scalar(255, 0, 255), 3, LINE_AA);
-
-  ////////////////////////
-
-  index_closest_line = get_strictest_line(groupD, groupD_thetas, image_center);
-  rho = groupD[index_closest_line], theta = groupD_thetas[index_closest_line];
-  pt1, pt2;
-  a = cos(theta), b = sin(theta);
-  cout << "a " << a << endl;
-  cout << "b " << b << endl;
-  cout << "rho " << rho << endl;
-  cout << "---------------------------------" << endl;
-  x0 = a * rho, y0 = b * rho;
-  pt1.x = cvRound(x0 + 1000 * (-b));
-  pt1.y = cvRound(y0 + 1000 * (a));
-  pt2.x = cvRound(x0 - 1000 * (-b));
-  pt2.y = cvRound(y0 - 1000 * (a));
-  line(color_lines, pt1, pt2, Scalar(255, 0, 255), 3, LINE_AA);
-  ////HROUP B
-  get_line_clusters(groupB, labels);
+  get_line_clusters(rhos_2, labels);
+  vector<float> rhos_C;
+  vector<float> thetas_C;
+  vector<float> rhos_D;
+  vector<float> thetas_D;
+  for (int i = 0; i < rhos_2.size(); ++i) {
+    if (labels[i] == 0) {
+      rhos_C.push_back(rhos_2[i]);
+      thetas_C.push_back(thetas_2[i]);
+    } else {
+      rhos_D.push_back(rhos_2[i]);
+      thetas_D.push_back(thetas_2[i]);
+    }
+  }
 
 #ifdef PRINTS
-  for (size_t i = 0; i < groupB.size(); i++) {
-    float rho = groupB[i], theta = groupB_thetas[i];
+  for (size_t i = 0; i < rhos_2.size(); i++) {
+    float rho = rhos_2[i], theta = thetas_2[i];
     Point pt1, pt2;
     double a = cos(theta), b = sin(theta);
     double x0 = a * rho, y0 = b * rho;
@@ -251,14 +248,47 @@ void detect_field(const cv::Mat &input_image) {
     pt1.y = cvRound(y0 + 1000 * (a));
     pt2.x = cvRound(x0 - 1000 * (-b));
     pt2.y = cvRound(y0 - 1000 * (a));
+    cout << labels[i] << endl;
     line(color_lines, pt1, pt2, colori[labels[i]], 3, LINE_AA);
   }
+  circle(color_lines, image_center, 10, Scalar(255, 0, 255));
 #endif
 
-  cout << "########################################" << endl;
+  Mat final_lines =
+      Mat::zeros(color_lines.rows, color_lines.cols, color_lines.type());
+  int index_closest_line = get_strictest_line(rhos_A, thetas_A, image_center);
+  float rho = rhos_A[index_closest_line], theta = thetas_A[index_closest_line];
+  draw_hough_line(final_lines, rho, theta);
+  Vec2f lineA(rho, theta);
 
+  index_closest_line = get_strictest_line(rhos_B, thetas_B, image_center);
+  rho = rhos_B[index_closest_line], theta = thetas_B[index_closest_line];
+  draw_hough_line(final_lines, rho, theta);
+  Vec2f lineB(rho, theta);
+
+  index_closest_line = get_strictest_line(rhos_C, thetas_C, image_center);
+  rho = rhos_C[index_closest_line], theta = thetas_C[index_closest_line];
+  draw_hough_line(final_lines, rho, theta);
+  Vec2f lineC(rho, theta);
+
+  index_closest_line = get_strictest_line(rhos_D, thetas_D, image_center);
+  rho = rhos_D[index_closest_line], theta = thetas_D[index_closest_line];
+  draw_hough_line(final_lines, rho, theta);
+  Vec2f lineD(rho, theta);
+
+  Vec2i AC = intersect_hough_lines(lineA, lineC);
+  circle(final_lines, AC, 10, Scalar(255, 255, 10), LINE_8);
+  Vec2i AD = intersect_hough_lines(lineA, lineD);
+  circle(final_lines, AD, 10, Scalar(255, 255, 10), LINE_8);
+  Vec2i BC = intersect_hough_lines(lineB, lineC);
+  circle(final_lines, BC, 10, Scalar(255, 255, 10), LINE_8);
+  Vec2i BD = intersect_hough_lines(lineB, lineD);
+  circle(final_lines, BD, 10, Scalar(255, 255, 10), LINE_8);
 #ifdef PRINTS
-#endif
-  imshow("cc", color_lines);
+  imshow("second clustering", color_lines);
+  imshow("final lines", final_lines);
   waitKey(0);
+#endif
+  Vec4Points vertices(AC, AD, BC, BD);
+  return vertices;
 }

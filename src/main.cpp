@@ -22,10 +22,16 @@ int main() {
                         string("/frames/frame_first.png"));
     clock_t start = clock();
 
-    detect_field(in);
+    Vec4Points vertices = detect_field(in);
     clock_t end = clock();
     // cout << "time" << (float)(end - start) / CLOCKS_PER_SEC * 1000 << "ms"
     //     << endl;
+    circle(in, vertices[0], 20, Scalar(255, 100, 255), LINE_8);
+    circle(in, vertices[1], 20, Scalar(255, 100, 255), LINE_8);
+    circle(in, vertices[2], 20, Scalar(255, 100, 255), LINE_8);
+    circle(in, vertices[3], 20, Scalar(255, 100, 255), LINE_8);
+    imshow("Vertices", in);
+    waitKey(0);
     total_time += (float)(end - start) / CLOCKS_PER_SEC * 1000;
     // imshow("field", field);
   }

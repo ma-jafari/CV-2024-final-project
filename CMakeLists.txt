@@ -7,7 +7,7 @@ project(BilliardAnalysis)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_FLAGS "-O2")
+set(CMAKE_CXX_FLAGS "-O2 -g")
 
 #OpenCV package
 find_package( OpenCV REQUIRED )                              

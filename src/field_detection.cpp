@@ -4,12 +4,11 @@
 #include "opencv2/core/matx.hpp"
 #include "opencv2/core/types.hpp"
 #include <cmath>
-#include <iostream>
 #include <limits>
 #include <opencv2/core.hpp>
+#include <opencv2/core/hal/interface.h>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
-#include <strings.h>
 #include <vector>
 
 #define NO_PRINTS
@@ -57,13 +56,9 @@ void get_field_mask(const cv::Mat &gray_contours, bool cluster_lines,
     lines = centers;
   }
 
-#ifdef PRINTS
-  float rho_mean = 0.0f;
-  float theta_mean = 0.0f;
+  Mat line_mask = Mat::zeros(mask.rows + 2, mask.cols + 2, CV_8U);
   for (size_t i = 0; i < lines.size(); i++) {
     float rho = lines[i][0], theta = lines[i][1];
-    rho_mean += rho;
-    theta_mean += theta;
     Point pt1, pt2;
     double a = cos(theta), b = sin(theta);
     double x0 = a * rho, y0 = b * rho;
@@ -71,8 +66,12 @@ void get_field_mask(const cv::Mat &gray_contours, bool cluster_lines,
     pt1.y = cvRound(y0 + 1000 * (a));
     pt2.x = cvRound(x0 - 1000 * (-b));
     pt2.y = cvRound(y0 - 1000 * (a));
-    line(mask, pt1, pt2, Scalar(255), 3, LINE_AA);
+    line(line_mask, pt1, pt2, Scalar(255), 3, LINE_AA);
   }
+  // FIX: maybe use image moments to estimate center of image
+  const Point image_center(mask.cols / 2, mask.rows / 2);
+  floodFill(mask, line_mask, image_center, Scalar(255, 0, 255));
+#ifdef PRINTS
 #endif
 }
 
@@ -129,7 +128,7 @@ Vec2i intersect_hough_lines(Vec2f line1, Vec2f line2) {
 }
 } // namespace
 
-Vec4Points detect_field(const cv::Mat &input_image) {
+Vec4Points detect_field(const cv::Mat &input_image, cv::Mat &field_mask) {
   using namespace cv;
   using namespace std;
   Mat in = input_image.clone();
@@ -144,12 +143,10 @@ Vec4Points detect_field(const cv::Mat &input_image) {
   Mat graycontours;
   get_field_contours(in, graycontours);
 
-  Mat mask = Mat::zeros(in.rows + 2, in.cols + 2, CV_8U);
   vector<Vec2f> lines;
   vector<float> thetas;
   vector<float> rhos;
-  get_field_mask(graycontours, false, mask, lines);
-  // TODO:
+  get_field_mask(graycontours, false, field_mask, lines);
 
   for (auto el : lines) {
     thetas.push_back(el[1] < CV_PI / 2 ? CV_PI - el[1] : el[1]);

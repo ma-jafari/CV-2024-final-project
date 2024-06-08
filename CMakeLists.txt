@@ -14,7 +14,7 @@ find_package( OpenCV REQUIRED )
 
 # Add the include directories
 include_directories(include)
-include_directories( ${OpenCV_INCLUDE_DIRS})
+include_directories(${OpenCV_INCLUDE_DIRS})
 
 # Add the executable
 file(GLOB_RECURSE SOURCES "src/*.cpp")

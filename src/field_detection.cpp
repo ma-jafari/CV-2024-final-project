@@ -4,6 +4,7 @@
 #include "opencv2/core/matx.hpp"
 #include "opencv2/core/types.hpp"
 #include <cmath>
+#include <iostream>
 #include <limits>
 #include <opencv2/core.hpp>
 #include <opencv2/core/hal/interface.h>
@@ -20,7 +21,7 @@ namespace {
 using namespace cv;
 using namespace std;
 void get_field_contours(const cv::Mat &in, cv::Mat &gray_contours) {
-  constexpr float canny_thresh = 80;
+  constexpr float canny_thresh = 60;
   RNG rng(42);
   Mat canny_output;
   Canny(in, canny_output, canny_thresh, canny_thresh * 2);
@@ -70,9 +71,7 @@ void get_field_mask(const cv::Mat &gray_contours, bool cluster_lines,
   }
   // FIX: maybe use image moments to estimate center of image
   const Point image_center(mask.cols / 2, mask.rows / 2);
-  floodFill(mask, line_mask, image_center, Scalar(255, 0, 255));
-#ifdef PRINTS
-#endif
+  floodFill(mask, line_mask, image_center, Scalar(255, 255, 255));
 }
 
 void get_line_clusters(const vector<float> &vec, vector<int> &labels) {
@@ -138,6 +137,10 @@ Vec4Points detect_field(const cv::Mat &input_image, cv::Mat &field_mask) {
   medianBlur(in, in, 7);                // to reduce noise
   in -= Scalar(255, 0, 255);            // remove blue and red components
   threshold(in, in, 100, 255, CV_8UC1); // to reduce noise
+  Mat kernel = getStructuringElement(MORPH_RECT, Size(13, 13));
+  dilate(in, in, kernel);
+  erode(in, in, kernel);
+
   // imshow("removed blue", in);
 
   Mat graycontours;
@@ -251,8 +254,10 @@ Vec4Points detect_field(const cv::Mat &input_image, cv::Mat &field_mask) {
   circle(color_lines, image_center, 10, Scalar(255, 0, 255));
 #endif
 
-  Mat final_lines =
+  /*Mat final_lines =
       Mat::zeros(color_lines.rows, color_lines.cols, color_lines.type());
+*/
+  Mat final_lines = in.clone();
   int index_closest_line = get_strictest_line(rhos_A, thetas_A, image_center);
   float rho = rhos_A[index_closest_line], theta = thetas_A[index_closest_line];
   draw_hough_line(final_lines, rho, theta);
@@ -284,8 +289,7 @@ Vec4Points detect_field(const cv::Mat &input_image, cv::Mat &field_mask) {
 #ifdef PRINTS
   imshow("second clustering", color_lines);
   imshow("final lines", final_lines);
-  waitKey(0);
 #endif
-  Vec4Points vertices(AC, AD, BC, BD);
+  Vec4Points vertices(AC, BC, BD, AD);
   return vertices;
 }

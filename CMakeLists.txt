@@ -9,8 +9,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS "-O2 -g")
 
-#OpenCV package
-find_package( OpenCV REQUIRED )                              
+# Check the platform and adjust settings for Windows
+if (WIN32)
+    # On Windows, ensure OpenCV is properly located
+    set(OpenCV_DIR "E:\\software\\programming\\opencv\\opencv\\build") # Adjust this path to your actual OpenCV build directory
+endif()
+
+# OpenCV package
+find_package(OpenCV REQUIRED)
 
 # Add the include directories
 include_directories(include)
@@ -23,4 +29,5 @@ add_executable(BilliardAnalysis ${SOURCES})
 # Link OpenCV
 target_link_libraries(BilliardAnalysis ${OpenCV_LIBS})
 
-message("${OpenCV_INCLUDE_DIRS}")
+# Print the OpenCV include directories (for debugging purposes)
+message("OpenCV include directories: ${OpenCV_INCLUDE_DIRS}")

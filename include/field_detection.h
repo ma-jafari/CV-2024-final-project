@@ -7,3 +7,4 @@ typedef cv::Vec<cv::Point2i, 4> Vec4Points;
 Vec4Points detect_field(const cv::Mat& input_image, cv::Mat& field_mask);
 
 #endif // FIELD_DETECTION_H
+

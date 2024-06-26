@@ -145,7 +145,7 @@ void select_Circles(vector<cv::Vec3f> &circles, float TH_Circ_A,
 
   circles = selected_circles;
 }
-void design_Circles(vector<cv::Vec3f> &circles, const cv::Mat &image) {
+void draw_circles(vector<cv::Vec3f> &circles, const cv::Mat &image) {
 
   for (int j = 0; j < circles.size(); j++) {
     cv::Vec3f c = circles[j];
@@ -157,7 +157,7 @@ void design_Circles(vector<cv::Vec3f> &circles, const cv::Mat &image) {
   cv::imshow("immagine FINALE cerchiata", image);
   cv::waitKey(0);
 }
-void design_Boxes(const vector<vector<cv::Point2f>> &vertices, cv::Mat &image) {
+void draw_bboxes(const vector<vector<cv::Point2f>> &vertices, cv::Mat &image) {
 
   for (int i = 0; i < vertices.size(); i++) {
 
@@ -244,7 +244,7 @@ calculate_SquaresVertices(const vector<cv::Vec3f> &circless) {
   return Allvertices;
 }
 vector<vector<float>>
-calculate_predictedBoxes(const vector<vector<cv::Point2f>> &allVertices) {
+compute_bboxes(const vector<vector<cv::Point2f>> &allVertices) {
   int n = allVertices.size();
   vector<vector<float>> predictedBoxes(n);
 
@@ -260,85 +260,4 @@ calculate_predictedBoxes(const vector<vector<cv::Point2f>> &allVertices) {
   }
 
   return predictedBoxes;
-}
-
-/*--------------------------------------COMMON
- * FUNCTIONS---------------------------------------------*/
-void process_general(const function<void(const cv::Mat &, cv::Mat &)> &function,
-                     const vector<cv::Mat> &inputImages,
-                     vector<cv::Mat> &output_Image) {
-  for (int i = 0; i < inputImages.size(); ++i)
-    function(inputImages[i], output_Image[i]);
-}
-void process_general(const function<void(const cv::Mat &)> &function,
-                     const vector<cv::Mat> &inputImages) {
-  for (int i = 0; i < inputImages.size(); ++i)
-    function(inputImages[i]);
-}
-void process_general(const function<void(cv::Mat &)> &function,
-                     vector<cv::Mat> &inputImages) {
-  for (int i = 0; i < inputImages.size(); ++i)
-    function(inputImages[i]);
-}
-
-void Loading_images(vector<cv::Mat> &imagess, const string &Folder_Paths) {
-
-  for (const auto &entry : fs::directory_iterator(Folder_Paths)) {
-    string file_path = entry.path().string();
-
-    /*if (file_path.ends_with(".jpg") || file_path.ends_with(".jpeg") ||
-    file_path.ends_with(".png")) { cv::Mat image = cv::imread(file_path);
-
-        try {
-            if (image.empty())
-                throw runtime_error("Error loading image file: " + file_path);
-            else
-                imagess.push_back(image);
-        }
-        catch (const runtime_error& e) {
-            cerr << "Exception caught: " << e.what() << endl;
-            exit(EXIT_FAILURE);
-        }
-    }*/
-  }
-}
-void Loading_images(vector<cv::Mat> &images, const vector<string> &imagePaths) {
-  try {
-    for (const string &imagePath : imagePaths) {
-      cv::Mat image = cv::imread(imagePath);
-      if (image.empty())
-        throw runtime_error("Error loading image file: " + imagePath);
-
-      images.push_back(image);
-    }
-  } catch (const runtime_error &e) {
-    cerr << "Exception caught: " << e.what() << endl;
-    // Operazioni di pulizia, se necessario
-    exit(EXIT_FAILURE); // Termina il programma con un codice di errore
-  }
-}
-
-void show_image(const char *name_image, const cv::Mat image) {
-  cv::imshow(name_image, image);
-  cv::waitKey(0);
-  cv::destroyWindow(name_image);
-}
-void show_image(const char *name_image, const vector<cv::Mat> Images) {
-  int idx = 0;
-  for (const cv::Mat &img : Images) {
-    string unique_name = string(name_image) + "_" + to_string(idx);
-    show_image(unique_name.c_str(), img);
-    idx++;
-  }
-}
-void show_image(const char *name_image, const vector<vector<cv::Mat>> Images) {
-  for (int i = 0; i < Images[0].size(); i++) {
-    for (int j = 0; j < Images.size(); j++) {
-      string unique_name =
-          string(name_image) + "_" + to_string(i) + "//" + to_string(j);
-      cv::imshow(unique_name.c_str(), Images[j][i]);
-    }
-    cv::waitKey(0);
-    cv::destroyAllWindows();
-  }
 }

@@ -1,9 +1,11 @@
-﻿#include <ctime>
+﻿#include <cmath>
+#include <ctime>
 #include <iostream>
 
 #include <opencv2/core.hpp>
 #include <opencv2/core/hal/interface.h>
 #include <opencv2/core/mat.hpp>
+#include <opencv2/core/matx.hpp>
 #include <opencv2/core/types.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -140,17 +142,17 @@ Mat detectBalls(const Mat &src) {
   return result;
 }
 
-void get_balls(cv::Mat &in_img, cv::Mat &out_img) {
+std::vector<Vec3f> get_balls(cv::Mat &in_img) {
 
-  // NOTE: FIN QUA ERA ROBA PER TAGLIARE IL TAVOLO
+  Mat delete_this; // FIX:
 
-  int kernel_DILATION = 1;
+  int kernel_DILATION = 3;
   int kernel_EROSION = 3;
-  float precisione_DIL = 12;
+  float precisione_DIL = 13; // 12;
   float precisione_ERO = 11.5;
 
-  float min_Dist = 3;
-  int min_Radius = 6;
+  float min_Dist = 2;
+  int min_Radius = 8;
   float TH_Circ_A = -6;
   float TH_Circ_a = -4;
   float TH_Circ_B = 4;
@@ -163,19 +165,29 @@ void get_balls(cv::Mat &in_img, cv::Mat &out_img) {
   DILATION(in_img, dilated, kernel_DILATION);
 
   EROSION(in_img, eroded, kernel_EROSION);
+  /*
   imshow("dilated", dilated);
   imshow("eroded", eroded);
+  */
+
+  Mat dilated_canny, eroded_canny;
+  Canny(dilated, dilated_canny, 300, 300);
+  Canny(eroded, eroded_canny, 300, 300);
+  imshow("dilcanny", dilated_canny);
+  imshow("eroded canny", eroded_canny);
+  dilated = dilated_canny;
+  eroded = eroded_canny;
 
   // dilated circle detection
   vector<cv::Vec3f> circles_dilated;
-  Hough_Circles(in_img, out_img, circles_dilated, min_Dist, precisione_DIL,
+  Hough_Circles(dilated, delete_this, circles_dilated, min_Dist, precisione_DIL,
                 min_Radius, TH_Circ_A, TH_Circ_a, TH_Circ_B, TH_Ratio_B,
                 TH_Circ_C, TH_Ratio_C);
 
   // eroded circle detection
   cv::Mat circle_EROSION;
   vector<cv::Vec3f> circles_erosion;
-  Hough_Circles(in_img, out_img, circles_erosion, min_Dist, precisione_ERO,
+  Hough_Circles(eroded, delete_this, circles_erosion, min_Dist, precisione_ERO,
                 min_Radius, TH_Circ_A, TH_Circ_a, TH_Circ_B, TH_Ratio_B,
                 TH_Circ_C, TH_Ratio_C);
 
@@ -183,41 +195,24 @@ void get_balls(cv::Mat &in_img, cv::Mat &out_img) {
   vector<cv::Vec3f> total = circles_erosion;
 
   total.insert(total.end(), dil.begin(), dil.end());
-  cout << total.size() << endl;
+  cout << total[0] << endl;
+  //  circle(in_img, Point(total[0][0], total[0][1]), total[0][2],
+  //        Scalar(255, 255, 255), LINE_AA);
 
   select_Circles(total, TH_Circ_A, TH_Circ_a, TH_Circ_B, TH_Ratio_B, TH_Circ_C,
                  TH_Ratio_C);
   cout << total.size() << endl;
 
-  // NOTE: SHOW BALLS DETECTED
-  vector<vector<cv::Point2f>> vertices_boxes = calculate_SquaresVertices(total);
-  design_Boxes(vertices_boxes, in_img);
-
-  // Scalar FColor = computeDominantColor(images[i]);
-  // cout << "dominante color: " << FColor << endl;
-
-  // Classify balls within the boxes
-  /*
-  for (const auto &box : vertices_boxes) {
-    Rect rect(box[0] - Point2f(5, 5),
-              box[2] + Point2f(5, 5)); // Assuming box[0] is top-left and
-                                       // box[2] is bottom-right
-    Mat roi = in_img(rect);
-    Mat ballroi = detectBalls(roi);
-
-    namedWindow("test");
-
-     resizeWindow("test", 400, 300);
-     imshow("test", ballroi);
-  // Classify the ball using adaptive thresholding
-  if (isStriped(ballroi)) {
-    rectangle(in_img, rect, Scalar(0, 255, 0),
-              2); // Green for striped balls
-  } else {
-    rectangle(in_img, rect, Scalar(0, 0, 255), 2); // Red for solid balls
-  }
+  return total;
 }
-*/
+
+bool is_ball_near_line(Point2f ball_pos, float radius, Point2f pointA,
+                       Point2f pointB) {
+  float temp = (pointB.y - pointA.y) * ball_pos.x -
+               (pointB.x - pointA.x) * ball_pos.y + pointB.x * pointA.y -
+               pointB.y * pointA.x;
+  float distance = fabs(temp) / norm(pointB - pointA);
+  return distance < 1.0f * radius;
 }
 
 int main() {
@@ -248,23 +243,76 @@ int main() {
     Vec4Points vertices = detect_field(in_img);
     fillPoly(mask, vertices, cv::Scalar(255, 255, 255));
     bitwise_and(in_img, mask, cutout_table);
+
+    Scalar linecolor = Scalar(255, 0, 0);
+    int linewidth = LINE_4;
+    line(cutout_table, vertices[0], vertices[1], linecolor, linewidth);
+    line(cutout_table, vertices[2], vertices[1], linecolor, linewidth);
+    line(cutout_table, vertices[2], vertices[3], linecolor, linewidth);
+    line(cutout_table, vertices[3], vertices[0], linecolor, linewidth);
     imshow("out", cutout_table);
+    Mat cutout_original = cutout_table.clone();
     imshow("mask", mask);
 
-    Mat temp_delete;
-    get_balls(cutout_table, temp_delete);
+    // NOTE: remove balls on edge of table
+    vector<Vec3f> detected_balls = get_balls(cutout_table);
+    vector<Vec3f> selected_balls;
+    for (int i = 0; i < detected_balls.size(); ++i) {
+      Point2f ball = Point2f(detected_balls[i][0], detected_balls[i][1]);
+      float radius = detected_balls[i][2];
+      if (false ||
+          !(is_ball_near_line(ball, radius, vertices[0], vertices[1]) ||
+            is_ball_near_line(ball, radius, vertices[1], vertices[2]) ||
+            is_ball_near_line(ball, radius, vertices[2], vertices[3]) ||
+            is_ball_near_line(ball, radius, vertices[3], vertices[0]))) {
+        selected_balls.push_back(detected_balls[i]);
+      }
+    }
 
-    waitKey(0);
+    // NOTE: SHOW BALLS DETECTED
+    vector<vector<cv::Point2f>> vertices_boxes =
+        calculate_SquaresVertices(selected_balls);
+    draw_bboxes(vertices_boxes, in_img);
+    circle(cutout_table, vertices[0], 20, Scalar(0, 0, 255));
+    circle(cutout_table, vertices[1], 20, Scalar(0, 0, 255));
+    circle(cutout_table, vertices[2], 20, Scalar(0, 0, 255));
+    circle(cutout_table, vertices[3], 20, Scalar(0, 0, 255));
+    imshow("vertices", cutout_table);
+
+    //
+
+    // Scalar FColor = computeDominantColor(images[i]);
+    // cout << "dominante color: " << FColor << endl;
+
+    // Classify balls within the boxes
+    for (const auto &box : vertices_boxes) {
+      Rect rect(box[0] - Point2f(5, 5),
+                box[2] + Point2f(5, 5)); // Assuming box[0] is top-left and
+                                         // box[2] is bottom-right
+      Mat roi = in_img(rect);
+      Mat ballroi = detectBalls(roi);
+
+      namedWindow("test");
+
+      resizeWindow("test", 400, 300);
+      imshow("test", ballroi);
+      // Classify the ball using adaptive thresholding
+      if (isStriped(ballroi)) {
+        rectangle(in_img, rect, Scalar(0, 255, 0),
+                  2); // Green for striped balls
+      } else {
+        rectangle(in_img, rect, Scalar(0, 0, 255), 2); // Red for solid balls
+      }
+    }
+    /*
+    // Visualize balls with squared boxes
+
+      // Show the final image with rectangles
+      // imshow("Classified Balls", images[i]);
+      waitKey(0);
+    }
+    */
   }
-
-  /*
-  // Visualize balls with squared boxes
-
-    // Show the final image with rectangles
-    // imshow("Classified Balls", images[i]);
-    waitKey(0);
-  }
-  */
 
   return 0;
 }

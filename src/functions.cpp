@@ -12,7 +12,8 @@ namespace fs = std::filesystem;
 
 /*--------------------------------------SPECIFIC
  * FUNCTIONS---------------------------------------------*/
-void EROSION(const cv::Mat &current_image, cv::Mat &closed, int erosion_size) {
+void erode_image(const cv::Mat &current_image, cv::Mat &closed,
+                 int erosion_size) {
 
   cv::Mat erosion_element = cv::getStructuringElement(
       cv::MORPH_CROSS, cv::Size(2 * erosion_size + 1, 2 * erosion_size + 1),
@@ -20,8 +21,8 @@ void EROSION(const cv::Mat &current_image, cv::Mat &closed, int erosion_size) {
 
   cv::erode(current_image, closed, erosion_element);
 }
-void DILATION(const cv::Mat &current_image, cv::Mat &dilated,
-              int dilation_size) {
+void dilate_image(const cv::Mat &current_image, cv::Mat &dilated,
+                  int dilation_size) {
 
   cv::Mat dilation_element = cv::getStructuringElement(
       cv::MORPH_CROSS, cv::Size(2 * dilation_size + 1, 2 * dilation_size + 1),
@@ -29,36 +30,8 @@ void DILATION(const cv::Mat &current_image, cv::Mat &dilated,
 
   cv::dilate(current_image, dilated, dilation_element);
 }
-vector<cv::Point2f> OMOGRAFIA(const vector<cv::Vec3f> circles,
-                              const Vec4Points vertices, int width,
-                              int height) {
-
-  vector<cv::Point2f> points(vertices.val, vertices.val + 4);
-  // vertici devono essere messi in senso orario partendo dal vertice in alto a
-  // sinstra
-  vector<cv::Point2f> dst_points(4);
-  dst_points[0] = cv::Point2f(0, 0);
-  dst_points[1] = cv::Point2f(width, 0);
-  dst_points[2] = cv::Point2f(width, height);
-  dst_points[3] = cv::Point2f(0, height);
-
-  cv::Mat homography_matrix = cv::getPerspectiveTransform(vertices, dst_points);
-
-  vector<cv::Point2f> points_to_map(circles.size());
-  for (int i = 0; i < circles.size(); i++) {
-    points_to_map[i] = cv::Point2f(circles[i][0], circles[i][1]);
-  }
-
-  vector<cv::Point2f> mapped_points;
-  cv::perspectiveTransform(points_to_map, mapped_points, homography_matrix);
-
-  return mapped_points;
-}
-void Hough_Circles(const cv::Mat &input_img, cv::Mat &img_with_selected_circles,
-                   vector<cv::Vec3f> &circles, float min_Dist,
-                   float sensibility, int min_Radius, float TH_Circ_A,
-                   float TH_Circ_a, float TH_Circ_B, float th_Ratio_B,
-                   float TH_Circ_C, float th_Ratio_C) {
+void get_circles(const cv::Mat &input_img, vector<cv::Vec3f> &circles,
+                 float sensibility, ball_detection_params &ball_params) {
   cv::Mat gray;
   if (input_img.channels() != 1)
     cv::cvtColor(input_img, gray, cv::COLOR_BGR2GRAY);
@@ -66,13 +39,12 @@ void Hough_Circles(const cv::Mat &input_img, cv::Mat &img_with_selected_circles,
     gray = input_img.clone();
 
   cv::GaussianBlur(gray, gray, cv::Size(9, 9), 2, 2);
-  cv::HoughCircles(gray, circles, cv::HOUGH_GRADIENT, 1, min_Dist, 100,
-                   sensibility, min_Radius, 16);
+  cv::HoughCircles(gray, circles, cv::HOUGH_GRADIENT, 1, ball_params.min_Dist,
+                   100, sensibility, ball_params.min_Radius, 16);
 }
 
-void select_Circles(vector<cv::Vec3f> &circles, float TH_Circ_A,
-                    float TH_Circ_a, float TH_Circ_B, float TH_Ratio_B,
-                    float TH_Circ_C, float TH_Ratio_C) {
+void select_circles(vector<cv::Vec3f> &circles,
+                    ball_detection_params &ball_params) {
   int n_balls = circles.size();
   int new_size = circles.size();
   vector<bool> is_selected(n_balls, true);
@@ -93,7 +65,7 @@ void select_Circles(vector<cv::Vec3f> &circles, float TH_Circ_A,
 
       if (r_first < 10 && r_second < 10) {
 
-        if (distance_Circ < TH_Circ_a) {
+        if (distance_Circ < ball_params.TH_Circ_a) {
           is_selected[r_first < r_second ? i : j] = false;
           new_size--;
         } else {
@@ -109,17 +81,19 @@ void select_Circles(vector<cv::Vec3f> &circles, float TH_Circ_A,
           }
         }
       } else {
-        if (distance_Circ < TH_Circ_A) {
+        if (distance_Circ < ball_params.TH_Circ_A) {
           is_selected[r_first < r_second ? i : j] = false;
           new_size--;
         } else {
-          if (distance_Circ < TH_Circ_B &&
-              ratio < TH_Ratio_B) { // due threshold per vedere se prende rumori
+          if (distance_Circ < ball_params.TH_Circ_B &&
+              ratio < ball_params.TH_Ratio_B) { // due threshold per vedere se
+                                                // prende rumori
             is_selected[r_first < r_second ? i : j] = false;
             new_size--;
-          } else if (distance_Circ < TH_Circ_C &&
-                     ratio < TH_Ratio_C) { // due threshold per vedere se prende
-                                           // rumori
+          } else if (distance_Circ < ball_params.TH_Circ_C &&
+                     ratio < ball_params.TH_Ratio_C) { // due threshold per
+                                                       // vedere se prende
+                                                       // rumori
             is_selected[r_first < r_second ? i : j] = false;
             new_size--;
           }
@@ -217,7 +191,7 @@ void extractFrames(const string &videoPath, int frameInterval) {
 }
 
 vector<vector<cv::Point2f>>
-calculate_SquaresVertices(const vector<cv::Vec3f> &circless) {
+compute_bbox_vertices(const vector<cv::Vec3f> &circless) {
 
   vector<vector<cv::Point2f>> Allvertices(circless.size());
 
@@ -260,4 +234,30 @@ compute_bboxes(const vector<vector<cv::Point2f>> &allVertices) {
   }
 
   return predictedBoxes;
+}
+
+vector<cv::Point2f> OMOGRAFIA(const vector<cv::Vec3f> circles,
+                              const Vec4Points vertices, int width,
+                              int height) {
+
+  vector<cv::Point2f> points(vertices.val, vertices.val + 4);
+  // vertici devono essere messi in senso orario partendo dal vertice in alto a
+  // sinstra
+  vector<cv::Point2f> dst_points(4);
+  dst_points[0] = cv::Point2f(0, 0);
+  dst_points[1] = cv::Point2f(width, 0);
+  dst_points[2] = cv::Point2f(width, height);
+  dst_points[3] = cv::Point2f(0, height);
+
+  cv::Mat homography_matrix = cv::getPerspectiveTransform(vertices, dst_points);
+
+  vector<cv::Point2f> points_to_map(circles.size());
+  for (int i = 0; i < circles.size(); i++) {
+    points_to_map[i] = cv::Point2f(circles[i][0], circles[i][1]);
+  }
+
+  vector<cv::Point2f> mapped_points;
+  cv::perspectiveTransform(points_to_map, mapped_points, homography_matrix);
+
+  return mapped_points;
 }

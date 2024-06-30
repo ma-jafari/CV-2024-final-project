@@ -1,7 +1,8 @@
 ﻿#include <cmath>
 #include <ctime>
 #include <iostream>
-
+#include <fstream>
+#include <sstream>
 #include <opencv2/core.hpp>
 #include <opencv2/core/hal/interface.h>
 #include <opencv2/core/mat.hpp>
@@ -19,6 +20,38 @@
 using namespace cv;
 using namespace std;
 
+bool extractLabelsFromFile(const std::string& filename, std::vector<std::vector<float>>& allLabels) {
+	std::ifstream inputFile(filename);  // Open the file for reading
+	if (!inputFile.is_open()) {         // Check if the file opened successfully
+		std::cerr << "Failed to open file" << std::endl;
+		return false;
+	}
+
+	std::string line;
+	bool foundLabel = false;
+
+	// Skip the first line (comment)
+	if (!std::getline(inputFile, line)) {
+		std::cerr << "Failed to read the first line" << std::endl;
+		return false;
+	}
+
+	// Read the subsequent lines
+	while (std::getline(inputFile, line)) {
+		std::istringstream iss(line);
+		float label1, label2;
+		int label3;
+
+		if (iss >> label1 >> label2 >> label3) {
+			allLabels.push_back({ label1, label2, static_cast<float>(label3) });
+			foundLabel = true;
+		}
+	}
+
+	inputFile.close();  // Close the file
+
+	return foundLabel;
+}
 cv::Scalar computeDominantColor(const cv::Mat &img) {
   int k = 3;
   // Check if the image type is CV_8UC3
@@ -149,14 +182,16 @@ std::vector<Vec3f> get_balls(cv::Mat &in_img) {
   float precisione_DIL = 13; // 12;
   float precisione_ERO = 11.5;
 
-  ball_detection_params ball_params = {.min_Dist = 2,
-                                       .min_Radius = 8,
-                                       .TH_Circ_A = -6,
-                                       .TH_Circ_a = -4,
-                                       .TH_Circ_B = 4,
-                                       .TH_Ratio_B = 0.75,
-                                       .TH_Circ_C = 8,
-                                       .TH_Ratio_C = 0.6};
+
+  ball_detection_params ball_params;
+  ball_params.min_Dist = 2;
+  ball_params.min_Radius = 8;
+  ball_params.TH_Circ_A = -6;
+  ball_params.TH_Circ_a = -4;
+  ball_params.TH_Circ_B = 4;
+  ball_params.TH_Ratio_B = 0.75;
+  ball_params.TH_Circ_C = 8;
+  ball_params.TH_Ratio_C = 0.6;
 
   Mat dilated;
   Mat eroded;
@@ -222,6 +257,44 @@ int main() {
       return -1;
     }
     images.push_back(image);
+  }
+
+  vector<vector<vector<float>>> allLabels; // Vector to store the labels from all label files
+
+  // Load images and extract labels from label files
+  for (const string& name : names) {
+	  string imagePath = base_path + name + "/frames/frame_first.png";
+	  string labelPath = base_path + name + "/frames/labels-1.txt";
+	  Mat image = imread(imagePath);
+
+	  if (image.empty()) {
+		  cerr << "Error loading image file: " << imagePath << endl;
+		  return -1;
+	  }
+	  images.push_back(image);
+
+	  std::vector<std::vector<float>> labels;
+	  if (extractLabelsFromFile(labelPath, labels)) {
+		  cout << "For " << name << ":" << endl;
+		  for (const auto& lineLabels : labels) {
+			  cout << "  First float: " << lineLabels[0] << ", Second float: " << lineLabels[1] << ", Integer: " << lineLabels[2] << endl;
+		  }
+		  allLabels.push_back(labels); // Store labels in the vector
+	  }
+	  else {
+		  cerr << "Failed to find all required labels in file: " << labelPath << endl;
+	  }
+  }
+
+  // Output the extracted labels
+  for (size_t i = 0; i < allLabels.size(); ++i) {
+	  cout << "Labels from " << names[i] << ":" << endl;
+	  for (const auto& lineLabels : allLabels[i]) {
+		  for (float label : lineLabels) {
+			  cout << label << " ";
+		  }
+		  cout << endl;
+	  }
   }
 
   for (auto &in_img : images) {

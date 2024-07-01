@@ -1,6 +1,8 @@
 #include "functions.h"
 #include "field_detection.hpp"
 #include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <iostream>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/opencv.hpp>
@@ -260,4 +262,76 @@ vector<cv::Point2f> OMOGRAFIA(const vector<cv::Vec3f> circles,
   cv::perspectiveTransform(points_to_map, mapped_points, homography_matrix);
 
   return mapped_points;
+}
+
+bool extractLabelsFromFile(const std::string& filename, std::vector<std::vector<int>>& allLabels) {
+	std::ifstream inputFile(filename);  // Open the file for reading
+	if (!inputFile.is_open()) {         // Check if the file opened successfully
+		std::cerr << "Failed to open file" << std::endl;
+		return false;
+	}
+
+	std::string line;
+	bool foundLabel = false;
+
+	// Read the subsequent lines
+	while (std::getline(inputFile, line)) {
+		std::istringstream iss(line);
+		int label1, label2, label3, label4, label5;
+
+		if (iss >> label1 >> label2 >> label3 >> label4 >> label5) {
+			allLabels.push_back({ label1, label2, label3, label4, label5 });
+			foundLabel = true;
+		}
+	}
+
+	inputFile.close();  // Close the file
+
+	return foundLabel;
+}
+
+cv::Scalar computeDominantColor(const cv::Mat& img) {
+	int k = 3;
+	// Check if the image type is CV_8UC3
+	if (img.type() != CV_8UC3) {
+		throw std::runtime_error("The image is not of type CV_8UC3!");
+	}
+
+	// Convert the image to a float type for k-means
+	cv::Mat data;
+	img.convertTo(data, CV_32F);
+
+	// Reshape the image to a 2D array of pixels
+	data = data.reshape(1, data.total());
+
+	// Define criteria and apply k-means clustering
+	cv::Mat labels, centers;
+	cv::kmeans(data, k, labels,
+		cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT,
+			10, 1.0),
+		3, cv::KMEANS_PP_CENTERS, centers);
+
+	// Convert centers back to 8-bit values and ensure it's of type CV_32F with 3
+	// channels
+	centers = centers.reshape(3, centers.rows);
+
+	// Count the number of pixels in each cluster
+	std::vector<int> counts(k, 0);
+	for (int i = 0; i < labels.rows; ++i) {
+		counts[labels.at<int>(i)]++;
+	}
+
+	// Find the largest cluster
+	int maxIdx = std::distance(counts.begin(),
+		std::max_element(counts.begin(), counts.end()));
+
+	// Retrieve the dominant color
+	cv::Vec3f dominantColorFloat = centers.at<cv::Vec3f>(maxIdx);
+
+	// Normalize to the range [0, 255]
+	cv::Scalar dominantColor(dominantColorFloat[0] * 255.0f,
+		dominantColorFloat[1] * 255.0f,
+		dominantColorFloat[2] * 255.0f);
+
+	return dominantColor;
 }

@@ -52,3 +52,6 @@ float calculateAccuracy(const std::vector<std::vector<float>> &predictedBoxes,
 std::vector<cv::Point2f> OMOGRAFIA(const std::vector<cv::Vec3f> circles,
                                    const Vec4Points vertices, int width,
                                    int height);
+
+bool extractLabelsFromFile(const std::string& filename, std::vector<std::vector<int>>& allLabels);
+cv::Scalar computeDominantColor(const cv::Mat& img);

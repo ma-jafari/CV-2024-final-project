@@ -4,4 +4,5 @@
 #include <opencv2/core/mat.hpp>
 enum class ball_class { SOLID, STRIPED, CUE, EIGHT_BALL };
 ball_class classify_ball(const cv::Mat &img);
+int ReturnBallClass(ball_class classOfBall);
 #endif

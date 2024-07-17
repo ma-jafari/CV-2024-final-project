@@ -10,7 +10,7 @@
 #include <opencv2/imgproc.hpp>
 #include <vector>
 
-#define NO_PRINTS
+#define __PRINTS
 
 cv::Scalar colori[4] = {cv::Scalar(255, 0, 0), cv::Scalar(0, 255, 0),
                         cv::Scalar(0, 0, 255), cv::Scalar(0, 255, 255)};
@@ -23,6 +23,11 @@ void get_field_contours(const cv::Mat &in, cv::Mat &gray_contours) {
   RNG rng(42);
   Mat canny_output;
   Canny(in, canny_output, canny_thresh, canny_thresh * 2);
+  imshow("ca", canny_output);
+  gray_contours = canny_output;
+  /* dilate(gray_contours, gray_contours,
+          getStructuringElement(MORPH_RECT, Size(3, 3)));
+   return;*/
   vector<vector<Point>> contours;
   vector<Vec4i> hierarchy;
   findContours(canny_output, contours, hierarchy, RETR_TREE,
@@ -35,6 +40,7 @@ void get_field_contours(const cv::Mat &in, cv::Mat &gray_contours) {
   }
   // imshow("Contours", countours);
   cvtColor(countours, gray_contours, COLOR_BGR2GRAY);
+  imshow("contours", gray_contours);
 }
 void get_hough_lines(const cv::Mat &gray_contours, bool cluster_lines,
                      vector<Vec2f> &lines) {
@@ -116,14 +122,15 @@ Vec4Points detect_field(const cv::Mat &input_image) {
   // imshow("original", in);
   // PERF: median blur is very slow, is there any other way??
   // FIX: Try to find a better way
-  medianBlur(in, in, 7);                // to reduce noise
+  medianBlur(in, in, 7); // to reduce noise
+  // imshow("medianblur", in);
   in -= Scalar(255, 0, 255);            // remove blue and red components
   threshold(in, in, 100, 255, CV_8UC1); // to reduce noise
+  // imshow("before closing", in);
   Mat kernel = getStructuringElement(MORPH_RECT, Size(13, 13));
   dilate(in, in, kernel);
   erode(in, in, kernel);
-
-  // imshow("removed blue", in);
+  // imshow("after closing morph", in);
 
   Mat graycontours;
   get_field_contours(in, graycontours);
@@ -166,8 +173,9 @@ Vec4Points detect_field(const cv::Mat &input_image) {
     pt2.x = cvRound(x0 - 1000 * (-b));
     pt2.y = cvRound(y0 - 1000 * (a));
     line(color_lines2, pt1, pt2, colori[1 + labels[i]], 3, LINE_AA);
+    // line(color_lines2, pt1, pt2, Scalar(255, 100, 255), 3, LINE_AA);
   }
-  imshow("first subdivision", color_lines2);
+  // imshow("first subdivision", color_lines2);
 #endif
 
   Mat color_lines = Mat::zeros(in.rows, in.cols, in.type());

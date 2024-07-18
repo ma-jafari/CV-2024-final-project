@@ -147,7 +147,7 @@ Vec2i intersect_hough_lines(Vec2f line1, Vec2f line2) {
 Vec4Points detect_field(const cv::Mat &input_image) {
   using namespace cv;
   using namespace std;
-  bool show_intermediate = true;
+  bool show_intermediate = false;
   Mat in = input_image.clone();
 
   noise_removal_preprocess(in, show_intermediate);

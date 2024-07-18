@@ -12,14 +12,15 @@ ball_class classify_ball(const cv::Mat &img) {
                  color_threshold_white),
           Scalar(255, 255, 255), only_white_pixels);
 
-  namedWindow("thresholded");
+  /*namedWindow("thresholded");
   resizeWindow("thresholded", 400, 50);
   resizeWindow("after closing", 400, 50);
-  imshow("thresholded", only_white_pixels);
+  */
+  //imshow("thresholded", only_white_pixels);
   morphologyEx(only_white_pixels, only_white_pixels, MORPH_OPEN,
                getStructuringElement(MORPH_RECT, Size(3, 3)));
 
-  imshow("after closing", only_white_pixels);
+  //imshow("after closing", only_white_pixels);
   double white_pixels_percent =
       static_cast<double>(countNonZero(only_white_pixels)) /
       (only_white_pixels.rows * only_white_pixels.cols);
@@ -49,6 +50,13 @@ ball_class classify_ball(const cv::Mat &img) {
     label = ball_class::SOLID;
     std::cout << "SOLID" << std::endl;
   }
-  waitKey();
+  //waitKey();
   return label;
+}
+
+int ReturnBallClass(ball_class classOfBall) {
+	if (classOfBall == ball_class::CUE) return 1;
+	else if (classOfBall == ball_class::EIGHT_BALL) return 2;
+	else if (classOfBall == ball_class::STRIPED) return 3;
+	else if (classOfBall == ball_class::SOLID) return 4;
 }

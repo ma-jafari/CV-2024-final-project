@@ -16,39 +16,39 @@
 
 void track_balls(std::string s, std::vector<cv::Rect> bboxes) {
   using namespace cv;
-  printf("OpenCV: %s", cv::getBuildInformation().c_str());
   std::string filename = "../data/" + s + "/" + s + ".mp4";
   VideoCapture cap(filename);
   if (!cap.isOpened()) {
     std::cout << "Cannot open the video file. \n";
   }
-
-  Ptr<cv::legacy::MultiTracker> multiTracker =
-      cv::legacy::MultiTracker::create();
-
-  // Initialize multitracker
   Mat frame;
   cap >> frame;
-  for (int i = 0; i < bboxes.size(); ++i) {
-    multiTracker->add(cv::legacy::TrackerCSRT::create(), frame,
-                      Rect2d(bboxes[i]));
-  }
-  // Initialize multitracker
-  while (true) {
-    // get frame from the video
-    cap >> frame;
 
-    if (frame.rows == 0 || frame.cols == 0)
+  std::vector<Ptr<Tracker>> trackers;
+  for (const auto &bbox : bboxes) {
+    Ptr<Tracker> tracker = TrackerCSRT::create();
+    tracker->init(frame, bbox);
+    trackers.push_back(tracker);
+  }
+
+  /*VideoWriter video("outcpp.avi", VideoWriter::fourcc('M', 'J', 'P', 'G'), 10,
+                    Size(frame.cols, frame.rows));
+  */
+  while (true) {
+    cap >> frame;
+    if (frame.empty())
       break;
 
-    multiTracker->update(frame);
-    // draw the tracked object
-    for (size_t i = 0; i < multiTracker->getObjects().size(); ++i) {
-      rectangle(frame, multiTracker->getObjects()[i], Scalar(255, 255, 0));
+    for (size_t i = 0; i < trackers.size(); ++i) {
+      bool isok = trackers[i]->update(frame, bboxes[i]);
+      if (isok) {
+        rectangle(frame, bboxes[i], Scalar(255, 255, 0), 2, LINE_4);
+      }
     }
 
+    // video.write(frame);
     imshow("tracker", frame);
-    // quit on ESC button
+
     if (waitKey(1) == 27)
       break;
   }

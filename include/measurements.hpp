@@ -20,8 +20,7 @@ double computeAP(const std::vector<Rect> &gtBoxes,
                  std::vector<ball_class> &gtClassIDs,
                  std::vector<ball_class> &predClassIDs, ball_class classID);
 
-// Function to compute Average Precision (AP) per class
-std::vector<double> computeAveragePrecisionPerClass(
-    const std::vector<Rect> &gtBoxes, const std::vector<Rect> &predBoxes,
-    std::vector<int> gtClassIDs, std::vector<int> predClassIDs, int numClasses);
+double computeMeanAP(const vector<Rect> &gtBoxes, const vector<Rect> &predBoxes,
+                     vector<ball_class> &gtClassIDs,
+                     vector<ball_class> &predClassIDs);
 #endif // !Measurements

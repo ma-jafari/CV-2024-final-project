@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstddef>
 #include <iostream>
 #include <opencv2/core/types.hpp>
 #include <opencv2/highgui.hpp>
@@ -135,18 +136,20 @@ double computeAP(const vector<Rect> &gtBoxes, const vector<Rect> &predBoxes,
                  vector<ball_class> &gtClassIDs,
                  vector<ball_class> &predClassIDs, ball_class classID) {
 
-  vector<double> incremental_precisions;
-  vector<double> incremental_recalls;
+  // incremental recalls and precisions by considering an increasing amount of
+  // bounding boxes
+  vector<double> precisions;
+  vector<double> recalls;
   computePrecisionRecall(gtBoxes, predBoxes, gtClassIDs, predClassIDs,
-                         incremental_precisions, incremental_recalls, classID);
+                         precisions, recalls, classID);
 
   cout << "Precisions:";
-  for (auto &el : incremental_precisions) {
+  for (auto &el : precisions) {
     cout << el << ",";
   }
   cout << endl;
   cout << "Recalls:";
-  for (auto &el : incremental_recalls) {
+  for (auto &el : recalls) {
     cout << el << ",";
   }
   cout << endl;
@@ -154,6 +157,19 @@ double computeAP(const vector<Rect> &gtBoxes, const vector<Rect> &predBoxes,
   // 11 levels where precision is interpolated according to pascal voc
   vector<double> recall_levels = {0.0, 0.1, 0.2, 0.3, 0.4, 0.5,
                                   0.6, 0.7, 0.8, 0.9, 1.0};
+
+  size_t i = 0;
+  double ap = 0.0;
+  for (auto &recall_level : recall_levels) {
+    while (i < recalls.size() && recalls[i] < recall_level) {
+      ++i;
+    }
+    if (i >= recalls.size()) {
+      break;
+    }
+    ap += precisions[i];
+  }
+  ap /= recall_levels.size();
   /*
   double ap = 0.0;
   std::vector<double> precision;
@@ -181,38 +197,22 @@ double computeAP(const vector<Rect> &gtBoxes, const vector<Rect> &predBoxes,
 
   return ap / pascalPts.size();
   */
-  return 1;
+  return ap;
 }
 
-// Function to compute Average Precision (AP) using
-// Pascal VOC 11-point interpolation for each class
-vector<double> computeAveragePrecisionPerClass(const vector<Rect> &gtBoxes,
-                                               const vector<Rect> &predBoxes,
-                                               vector<int> gtClassIDs,
-                                               vector<int> predClassIDs,
-                                               int numClasses) {
-  vector<double> ap_per_class(numClasses, 0.0);
-  vector<vector<Rect>> gtBoxesPerClass(numClasses);
-  vector<vector<Rect>> predBoxesPerClass(numClasses);
+double computeMeanAP(const vector<Rect> &gtBoxes, const vector<Rect> &predBoxes,
+                     vector<ball_class> &gtClassIDs,
+                     vector<ball_class> &predClassIDs) {
+  double solidAP = computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs,
+                             ball_class::SOLID);
 
-  // Separate ground truth and predicted boxes by
-  // class ID
-  for (size_t i = 0; i < gtBoxes.size(); ++i) {
-    int classId = gtClassIDs[i] - 1;
-    gtBoxesPerClass[classId].push_back(gtBoxes[i]);
-  }
+  double stripedAP = computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs,
+                               ball_class::STRIPED);
 
-  for (size_t i = 0; i < predBoxes.size(); ++i) {
-    int classId = predClassIDs[i] - 1;
-    predBoxesPerClass[classId].push_back(predBoxes[i]);
-  }
+  double cueAP =
+      computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs, ball_class::CUE);
 
-  // Compute AP for each class
-  for (int c = 0; c < numClasses; ++c) {
-    ap_per_class[c] = 0x989899898989898; /* computeAveragePrecision(
-         gtBoxesPerClass[c], predBoxesPerClass[c], gtClassIDs,
-         predClassIDs);*/
-  }
-
-  return ap_per_class;
+  double eightballAP = computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs,
+                                 ball_class::SOLID);
+  return (solidAP + stripedAP + cueAP + eightballAP);
 }

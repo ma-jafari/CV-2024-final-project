@@ -46,22 +46,31 @@ double computeIoU(const Rect & gtBox, const Rect & predBox) {
 	return static_cast<double>(intersectionArea) / unionArea;
 }
 
-// Function to compute mean Intersection over Union (mIoU) for a single image
-double computeMeanIoU(const vector<Rect> & gtBoxes, const vector<Rect> & predBoxes) {
-	double sumIoU = 0.0;
-	int count = 0;
-	for (const auto& gtBox : gtBoxes) {
-		double maxIoU = 0.0;
-		for (const auto& predBox : predBoxes) {
-			double iou = computeIoU(gtBox, predBox);
-			if (iou > maxIoU) {
-				maxIoU = iou;
+// Compute IoU per class
+double ComputeIoUPerClass(const Mat& predMask, const Mat& gtMask, int classValue) {
+	// Initialize counters
+	int TP = 0, FP = 0, FN = 0;
+
+	for (int y = 0; y < predMask.rows; ++y) {
+		for (int x = 0; x < predMask.cols; ++x) {
+			uchar predValue = predMask.at<uchar>(y, x);
+			uchar gtValue = gtMask.at<uchar>(y, x);
+
+			if (predValue == classValue && gtValue == classValue) {
+				TP++;
+			}
+			else if (predValue == classValue && gtValue != classValue) {
+				FP++;
+			}
+			else if (predValue != classValue && gtValue == classValue) {
+				FN++;
 			}
 		}
-		sumIoU += maxIoU;
-		++count;
 	}
-	return count > 0 ? sumIoU / count : 0.0;
+
+	// Compute IoU
+	if (TP + FP + FN == 0) return 0.0;
+	return static_cast<double>(TP) / (TP + FP + FN);
 }
 
 // Function to compute Precision and Recall

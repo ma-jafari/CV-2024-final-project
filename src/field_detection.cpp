@@ -1,8 +1,8 @@
+/*Author: Matteo De Gobbi */
 #include "field_detection.hpp"
 #include "opencv2/core/cvdef.h"
 #include "opencv2/core/matx.hpp"
 #include <cmath>
-#include <iostream>
 #include <limits>
 #include <opencv2/core.hpp>
 #include <opencv2/core/hal/interface.h>
@@ -22,6 +22,7 @@ namespace {
 
 using namespace cv;
 using namespace std;
+// preprocessing that removes some noise from the original image
 void noise_removal_preprocess(Mat &in, bool show_intermediate) {
   // NOTE: median blur is slower than gaussian blur
   // but it performs better
@@ -32,12 +33,16 @@ void noise_removal_preprocess(Mat &in, bool show_intermediate) {
     imshow("table segm:median blur+thresholding", in);
   }
   Mat kernel = getStructuringElement(MORPH_RECT, Size(13, 13));
+  // dilation+erosion, it's a closing morphological opeations to close holes and
+  // breaks in the table to make it smoother
   dilate(in, in, kernel);
   erode(in, in, kernel);
   if (show_intermediate) {
     imshow("table segm:closing morph operation", in);
   }
 }
+
+// Uses Canny + find_contours to extract the edges of the table
 void get_field_contours(const Mat &in, Mat &gray_contours,
                         bool show_intemediate) {
   constexpr float canny_thresh = 60;
@@ -66,6 +71,9 @@ void get_field_contours(const Mat &in, Mat &gray_contours,
   cvtColor(countours, gray_contours, COLOR_BGR2GRAY);
   //  imshow("contours", gray_contours);
 }
+
+// uses Hough Line transform to detect the lines corresponding to the table
+// edges
 void get_hough_lines(const cv::Mat &gray_contours, vector<Vec2f> &lines) {
   //  NOTE: 1.3f instead of 1.0f to give some leeway for detecting not perfectly
   //  aligned lines
@@ -75,6 +83,8 @@ void get_hough_lines(const cv::Mat &gray_contours, vector<Vec2f> &lines) {
   HoughLines(gray_contours, lines, hough_leeway, CV_PI / 180, hough_threshold);
 }
 
+// splits the lines in two different clusters based on a 1d parameter, we use it
+// with theta and rho parameters of Hough space
 void get_line_clusters(const vector<float> &vec, vector<int> &labels) {
   labels.clear();
   constexpr int n_clusters = 2; // we always divide the lines in two clusters
@@ -82,6 +92,8 @@ void get_line_clusters(const vector<float> &vec, vector<int> &labels) {
          KMEANS_PP_CENTERS, noArray());
 }
 
+// keeps only the strictest line in the cluster this is to get only one line per
+// table edge, we choose the strictest to get a good table mask
 int get_strictest_line(const vector<float> &rhos, const vector<float> &thetas,
                        const Point image_center) {
   float min_dist = numeric_limits<float>::max();
@@ -100,6 +112,8 @@ int get_strictest_line(const vector<float> &rhos, const vector<float> &thetas,
   }
   return index_closest_line;
 }
+
+// draws a line in the image given its Hough space representation
 void draw_hough_line(Mat &image, float rho, float theta) {
   Point pt1, pt2;
   float a = cos(theta), b = sin(theta);
@@ -110,7 +124,7 @@ void draw_hough_line(Mat &image, float rho, float theta) {
   pt2.y = cvRound(y0 - 1000 * (a));
   line(image, pt1, pt2, Scalar(255, 0, 255), 3, LINE_AA);
 }
-
+// draws clustered lines using different colors based on the label
 // offset colors is set to true if we want to use red and yellow instead of
 // green and blue top differentiate the various clusters
 void draw_cluster_lines(Mat &out, vector<float> rhos, vector<float> thetas,
@@ -128,6 +142,10 @@ void draw_cluster_lines(Mat &out, vector<float> rhos, vector<float> thetas,
     line(out, pt1, pt2, line_colors[2 * offset_colors + labels[i]], 3, LINE_AA);
   }
 }
+
+// computes the intersection of two lines working directly in Hough space
+// this avoids having to compute the angular coefficient that can approach
+// infinity for vertical lines
 Vec2i intersect_hough_lines(Vec2f line1, Vec2f line2) {
 
   cv::Mat A = (Mat_<double>(2, 2) << cos(line1[1]), sin(line1[1]),
@@ -144,6 +162,9 @@ Vec2i intersect_hough_lines(Vec2f line1, Vec2f line2) {
 }
 } // namespace
 
+// function that performs the actual table detection, takes as input the raw BGR
+// image and returns a Vec4Points (typedef from field_detection.hpp) which is a
+// Vec of 4 vertices of the table
 Vec4Points detect_field(const cv::Mat &input_image) {
   using namespace cv;
   using namespace std;

@@ -1,3 +1,4 @@
+/*Author: Matteo De Gobbi */
 #ifndef BallTracking
 #define BallTracking
 

@@ -1,3 +1,4 @@
+/*Author: Matteo De Gobbi */
 #ifndef FIELD_DETECTION_H
 #define FIELD_DETECTION_H
 

@@ -1,3 +1,4 @@
+/*Author: Matteo De Gobbi */
 #include "opencv2/highgui.hpp"
 #include <cstddef>
 #include <iostream>

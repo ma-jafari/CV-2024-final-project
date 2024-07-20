@@ -1,6 +1,7 @@
-#include <cassert>
+#include <algorithm>
 #include <cstddef>
 #include <iostream>
+#include <iterator>
 #include <opencv2/core/types.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
@@ -52,26 +53,6 @@ double computeIoU(const Rect &gtBox, const Rect &predBox) {
   return static_cast<double>(intersectionArea) / unionArea;
 }
 
-// Function to compute mean Intersection over Union (mIoU) for a single image
-// FIX: this function is wrong, it should be applied to segmentation masks not
-// to bounding boxes
-double computeMeanIoU(const vector<Rect> &gtBoxes,
-                      const vector<Rect> &predBoxes) {
-  double sumIoU = 0.0;
-  int count = 0;
-  for (const auto &gtBox : gtBoxes) {
-    double maxIoU = 0.0;
-    for (const auto &predBox : predBoxes) {
-      double iou = computeIoU(gtBox, predBox);
-      if (iou > maxIoU) {
-        maxIoU = iou;
-      }
-    }
-    sumIoU += maxIoU;
-    ++count;
-  }
-  return count > 0 ? sumIoU / count : 0.0;
-}
 // Function to compute Precision and Recall for a single class specified by
 // classID, the results are stored in the vector passed by reference
 // incremental_precisions and incremental_recalls
@@ -85,6 +66,12 @@ void computePrecisionRecall(const vector<Rect> &gtBoxes,
 
   constexpr double iouThreshold = 0.5; // fixed threshold for Pascal VOC mAP
 
+  int n_gtboxes_class = 0;
+  for (auto &gtclass : gtClassIDs) {
+    if (gtclass == classID) {
+      ++n_gtboxes_class;
+    }
+  }
   incremental_precisions.clear();
   incremental_recalls.clear();
 
@@ -106,7 +93,7 @@ void computePrecisionRecall(const vector<Rect> &gtBoxes,
         // and at most one match for each gtBox
       }
       double iou = computeIoU(gtBoxes[j], predBoxes[i]);
-      cout << "iou" << iou << endl;
+      // cout << "iou" << iou << endl;
       if (iou > maxiou) {
         // if we find a better fitting gt box we save it and its corresponding
         // IoU
@@ -114,7 +101,7 @@ void computePrecisionRecall(const vector<Rect> &gtBoxes,
         maxiou_index = j;
       }
     }
-    cout << "maxiou" << maxiou << endl;
+    cout << "maxiou" << maxiou << ",";
     if (maxiou >= iouThreshold) {
       ++tp;
       // true positive, both IoU is above threshold and prediction is correct
@@ -123,11 +110,11 @@ void computePrecisionRecall(const vector<Rect> &gtBoxes,
       // false positive, either the wrong class or IoU is too small
       ++fp;
     }
-    cout << "tp" << tp << endl;
-    cout << "fp" << fp << endl;
     incremental_precisions.push_back(static_cast<double>(tp) / (tp + fp));
-    incremental_recalls.push_back(static_cast<double>(tp) / gtBoxes.size());
+    incremental_recalls.push_back(static_cast<double>(tp) / n_gtboxes_class);
   }
+
+  cout << endl;
 }
 
 // Function to compute Average Precision (AP) using Pascal VOC 11-point
@@ -167,52 +154,44 @@ double computeAP(const vector<Rect> &gtBoxes, const vector<Rect> &predBoxes,
     if (i >= recalls.size()) {
       break;
     }
-    ap += precisions[i];
-  }
-  ap /= recall_levels.size();
-  /*
-  double ap = 0.0;
-  std::vector<double> precision;
-  std::vector<double> recall;
-
-  // Compute precision-recall for each threshold
-  for (auto &t : pascalPts) {
-    auto [prec, rec] =
-        computePrecisionRecall(gtBoxes, predBoxes,
-  gtClassIDs, predClassIDs);
-    precision.push_back(prec);
-    recall.push_back(rec);
-  }
-
-  // Compute AP using 11-point interpolation
-  for (size_t i = 0; i < pascalPts.size(); i++) {
+    size_t precision_index = i;
     double max_precision = 0;
-    for (size_t j = 0; j < recall.size(); j++) {
-      if (recall[j] >= pascalPts[i] && precision[j]
-  > max_precision) { max_precision = precision[j];
+    while (precision_index < precisions.size()) {
+      if (precisions[precision_index] > max_precision) {
+        max_precision = precisions[precision_index];
       }
+      ++precision_index;
     }
     ap += max_precision;
   }
-
-  return ap / pascalPts.size();
-  */
+  ap /= recall_levels.size();
   return ap;
 }
 
 double computeMeanAP(const vector<Rect> &gtBoxes, const vector<Rect> &predBoxes,
                      vector<ball_class> &gtClassIDs,
                      vector<ball_class> &predClassIDs) {
-  double solidAP = computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs,
-                             ball_class::SOLID);
+  cout << "STRIPED-------------------------------------------" << endl;
 
   double stripedAP = computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs,
                                ball_class::STRIPED);
 
+  cout << stripedAP << "------------------------------------------" << endl;
+
+  cout << "SOLID--------------------------------------" << endl;
+  double solidAP = computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs,
+                             ball_class::SOLID);
+
+  cout << solidAP << "------------------------------------------" << endl;
+  cout << "CUE----------------------------------------" << endl;
   double cueAP =
       computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs, ball_class::CUE);
 
+  cout << cueAP << "------------------------------------------" << endl;
+  cout << "8BALL-----------------------------------------" << endl;
   double eightballAP = computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs,
-                                 ball_class::SOLID);
-  return (solidAP + stripedAP + cueAP + eightballAP);
+                                 ball_class::EIGHT_BALL);
+
+  cout << eightballAP << "------------------------------------------" << endl;
+  return (solidAP + stripedAP + cueAP + eightballAP) / 4;
 }

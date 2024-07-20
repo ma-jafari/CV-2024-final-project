@@ -1,3 +1,4 @@
+// Alessandro Di Frenna
 #include "ball_detection.hpp"
 #include "field_detection.hpp"
 #include <filesystem>
@@ -153,45 +154,6 @@ void draw_bboxes(const vector<vector<cv::Point2f>> &vertices, cv::Mat &image) {
   cv::imshow("immagine FINALE con boxes", image);
 }
 
-void extractFrames(const string &videoPath, int frameInterval) {
-  // Cartella di output per i frame
-  string outputFolder = "frames";
-
-  // Crea la cartella di output se non esiste
-  fs::create_directories(outputFolder);
-
-  // Apri il video
-  cv::VideoCapture cap(videoPath);
-
-  // Controlla se il video � stato aperto correttamente
-  if (!cap.isOpened()) {
-    cerr << "Errore nell'aprire il video" << endl;
-  }
-
-  int frameCount = 0;
-  cv::Mat frame;
-  while (true) {
-    // Leggi un frame
-    bool success = cap.read(frame);
-    if (!success) {
-      break; // Fine del video
-    }
-
-    // Controlla se questo frame deve essere campionato
-    if (frameCount % frameInterval == 0) {
-      // Elabora o salva il frame campionato
-      string frameFilename = "frame_" + to_string(frameCount) + ".jpg";
-      cv::imwrite(frameFilename, frame);
-      cout << "Frame " << frameCount << " salvato come " << frameFilename
-           << endl;
-    }
-
-    frameCount++;
-  }
-
-  cap.release();
-}
-
 vector<vector<cv::Point2f>>
 compute_bbox_vertices(const vector<cv::Vec3f> &circless) {
 
@@ -236,105 +198,6 @@ compute_bboxes(const vector<vector<cv::Point2f>> &allVertices) {
   }
 
   return predictedBoxes;
-}
-
-vector<cv::Point2f> OMOGRAFIA(const vector<cv::Vec3f> circles,
-                              const Vec4Points vertices, int width,
-                              int height) {
-
-  vector<cv::Point2f> points(vertices.val, vertices.val + 4);
-  // vertici devono essere messi in senso orario partendo dal vertice in alto a
-  // sinstra
-  vector<cv::Point2f> dst_points(4);
-  dst_points[0] = cv::Point2f(0, 0);
-  dst_points[1] = cv::Point2f(width, 0);
-  dst_points[2] = cv::Point2f(width, height);
-  dst_points[3] = cv::Point2f(0, height);
-
-  cv::Mat homography_matrix = cv::getPerspectiveTransform(vertices, dst_points);
-
-  vector<cv::Point2f> points_to_map(circles.size());
-  for (int i = 0; i < circles.size(); i++) {
-    points_to_map[i] = cv::Point2f(circles[i][0], circles[i][1]);
-  }
-
-  vector<cv::Point2f> mapped_points;
-  cv::perspectiveTransform(points_to_map, mapped_points, homography_matrix);
-
-  return mapped_points;
-}
-
-bool extractLabelsFromFile(const std::string &filename,
-                           std::vector<std::vector<int>> &allLabels) {
-  std::ifstream inputFile(filename); // Open the file for reading
-  if (!inputFile.is_open()) {        // Check if the file opened successfully
-    std::cerr << "Failed to open file" << std::endl;
-    return false;
-  }
-
-  std::string line;
-  bool foundLabel = false;
-
-  // Read the subsequent lines
-  while (std::getline(inputFile, line)) {
-    std::istringstream iss(line);
-    int label1, label2, label3, label4, label5;
-
-    if (iss >> label1 >> label2 >> label3 >> label4 >> label5) {
-      allLabels.push_back({label1, label2, label3, label4, label5});
-      foundLabel = true;
-    }
-  }
-
-  inputFile.close(); // Close the file
-
-  return foundLabel;
-}
-
-cv::Scalar computeDominantColor(const cv::Mat &img) {
-  int k = 3;
-  // Check if the image type is CV_8UC3
-  if (img.type() != CV_8UC3) {
-    throw std::runtime_error("The image is not of type CV_8UC3!");
-  }
-
-  // Convert the image to a float type for k-means
-  cv::Mat data;
-  img.convertTo(data, CV_32F);
-
-  // Reshape the image to a 2D array of pixels
-  data = data.reshape(1, data.total());
-
-  // Define criteria and apply k-means clustering
-  cv::Mat labels, centers;
-  cv::kmeans(data, k, labels,
-             cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT,
-                              10, 1.0),
-             3, cv::KMEANS_PP_CENTERS, centers);
-
-  // Convert centers back to 8-bit values and ensure it's of type CV_32F with 3
-  // channels
-  centers = centers.reshape(3, centers.rows);
-
-  // Count the number of pixels in each cluster
-  std::vector<int> counts(k, 0);
-  for (int i = 0; i < labels.rows; ++i) {
-    counts[labels.at<int>(i)]++;
-  }
-
-  // Find the largest cluster
-  int maxIdx = std::distance(counts.begin(),
-                             std::max_element(counts.begin(), counts.end()));
-
-  // Retrieve the dominant color
-  cv::Vec3f dominantColorFloat = centers.at<cv::Vec3f>(maxIdx);
-
-  // Normalize to the range [0, 255]
-  cv::Scalar dominantColor(dominantColorFloat[0] * 255.0f,
-                           dominantColorFloat[1] * 255.0f,
-                           dominantColorFloat[2] * 255.0f);
-
-  return dominantColor;
 }
 
 std::vector<cv::Vec3f> get_balls(cv::Mat &in_img) {

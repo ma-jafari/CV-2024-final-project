@@ -1,3 +1,4 @@
+// Ali Jafari
 #ifndef Measurements
 #define Measurements
 #include "ball_classification.hpp"
@@ -23,4 +24,7 @@ double computeAP(const std::vector<Rect> &gtBoxes,
 double computeMeanAP(const vector<Rect> &gtBoxes, const vector<Rect> &predBoxes,
                      vector<ball_class> &gtClassIDs,
                      vector<ball_class> &predClassIDs);
+
+bool extractLabelsFromFile(const std::string &filename,
+                           std::vector<std::vector<int>> &allLabels);
 #endif // !Measurements

@@ -118,6 +118,5 @@ void drawMinimap(const std::vector<cv::Rect> rectangles,
   for (int i = 0; i < rectangles.size(); i++) {
     cv::circle(image, mapped_points[i], 1, cv::Scalar(255, 0, 255), -1);
   }
-  cv::imshow("Image", image);
-  cv::waitKey(0);
+  cv::imshow("minimap", image);
 }

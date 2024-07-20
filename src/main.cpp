@@ -12,6 +12,7 @@
 
 #include "ball_classification.hpp"
 #include "ball_detection.hpp"
+#include "ball_tracking.hpp"
 #include "field_detection.hpp"
 #include "measurements.hpp"
 #include "minimap.hpp"
@@ -24,19 +25,18 @@ int main(int argc, char **argv) {
       "{help h usage ? | | print the help message }"
       "{i intermidiate| | show intermediate steps of the algorithm}"
       "{s save | | save the output video on a file}"
-      "{savepath | | path of the output video when -s or --save are used}"
-      "{b benchmark| | use this argument if the path provided contains "
-      "multiple subdirectories containing clips, in this case the program will "
-      "compute the accuracy metrics across all the dataset}"
-      "{@path|../data/game1_clip1 | path to the dataset or directory of the "
-      "clip}";
+      "{savepath | | path of the directory where the output video wil be "
+      "saved-s or --save are used}"
+      "{@path|../data/game1_clip1 | path to the directory of the clip}";
   CommandLineParser parser(argc, argv, keys);
-  parser.about("Application name v1.0.0");
+  parser.about("Billiard Analisys");
   if (parser.has("help")) {
     parser.printMessage();
     return 0;
   }
   bool show_intermediate = parser.has("i");
+  bool savevideo = parser.has("s");
+  string savepath = savevideo ? parser.get<string>("savepath") : "";
   string path = parser.get<string>("@path");
 
   string imagePath = path + "/frames/frame_first.png";
@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
   // NOTE: field detection
   // NOTE: We cut find the table boundaries and cut out the table
   // from the rest of the image
-  Vec4Points vertices = detect_field(first_frame);
+  Vec4Points vertices = detect_field(first_frame, show_intermediate);
   fillPoly(mask, vertices, cv::Scalar(255, 255, 255));
   bitwise_and(first_frame, mask, cutout_table);
 
@@ -62,9 +62,11 @@ int main(int argc, char **argv) {
   line(cutout_table, vertices[2], vertices[1], linecolor, linewidth);
   line(cutout_table, vertices[2], vertices[3], linecolor, linewidth);
   line(cutout_table, vertices[3], vertices[0], linecolor, linewidth);
-  imshow("out", cutout_table);
-  Mat cutout_original = cutout_table.clone();
-  imshow("mask", mask);
+  if (show_intermediate) {
+
+    imshow("cutout_table", cutout_table);
+    imshow("mask", mask);
+  }
 
   // NOTE: ball detection
   //  NOTE: remove balls on edge of table
@@ -80,13 +82,6 @@ int main(int argc, char **argv) {
       selected_balls.push_back(detected_balls[i]);
     }
   }
-
-  // draw_bboxes(vertices_boxes, in_img);
-  circle(cutout_table, vertices[0], 20, Scalar(0, 0, 255));
-  circle(cutout_table, vertices[1], 20, Scalar(0, 0, 255));
-  circle(cutout_table, vertices[2], 20, Scalar(0, 0, 255));
-  circle(cutout_table, vertices[3], 20, Scalar(0, 0, 255));
-  imshow("vertices", cutout_table);
 
   vector<vector<cv::Point2f>> vertices_boxes =
       compute_bbox_vertices(selected_balls);
@@ -164,6 +159,7 @@ int main(int argc, char **argv) {
 
   cout << computeMeanAP(gtBoxes, predBoxes, gt_classes, pred_classes) << endl;
   drawMinimap(predBoxes, vertices, pred_classes);
+  track_balls(path, predBoxes, savevideo, savepath);
   waitKey();
   return 0;
 }

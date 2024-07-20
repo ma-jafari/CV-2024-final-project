@@ -1,5 +1,7 @@
+// Ali Jafari
 #include <algorithm>
 #include <cstddef>
+#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <opencv2/core/types.hpp>
@@ -13,6 +15,32 @@
 using namespace std;
 using namespace cv;
 
+bool extractLabelsFromFile(const std::string &filename,
+                           std::vector<std::vector<int>> &allLabels) {
+  std::ifstream inputFile(filename); // Open the file for reading
+  if (!inputFile.is_open()) {        // Check if the file opened successfully
+    std::cerr << "Failed to open file" << std::endl;
+    return false;
+  }
+
+  std::string line;
+  bool foundLabel = false;
+
+  // Read the subsequent lines
+  while (std::getline(inputFile, line)) {
+    std::istringstream iss(line);
+    int label1, label2, label3, label4, label5;
+
+    if (iss >> label1 >> label2 >> label3 >> label4 >> label5) {
+      allLabels.push_back({label1, label2, label3, label4, label5});
+      foundLabel = true;
+    }
+  }
+
+  inputFile.close(); // Close the file
+
+  return foundLabel;
+}
 // Function to compute bounding boxes from detected balls
 vector<Rect> compute_bboxes(const vector<Vec3f> &balls) {
   vector<Rect> bboxes;

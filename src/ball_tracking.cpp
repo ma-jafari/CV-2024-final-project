@@ -1,6 +1,7 @@
 /*Author: Matteo De Gobbi */
 #include "opencv2/highgui.hpp"
 #include <cstddef>
+#include <filesystem>
 #include <iostream>
 #include <opencv2/core.hpp>
 #include <opencv2/core/ocl.hpp>
@@ -15,12 +16,25 @@
 #include <string>
 #include <vector>
 
-void track_balls(std::string s, std::vector<cv::Rect> bboxes) {
+std::string find_mp4_video(std::string folderpath) {
+  namespace fs = std::filesystem;
+
+  for (const auto &elem : fs::directory_iterator(folderpath)) {
+    if (elem.path().extension() == ".mp4") {
+      return elem.path().string();
+    }
+  }
+  return "";
+}
+void track_balls(std::string path, std::vector<cv::Rect> bboxes, bool savevideo,
+                 std::string out_savepath) {
   using namespace cv;
-  std::string filename = "../data/" + s + "/" + s + ".mp4";
+  std::string filename = find_mp4_video(path);
+
   VideoCapture cap(filename);
   if (!cap.isOpened()) {
     std::cout << "Cannot open the video file. \n";
+    return;
   }
   Mat frame;
   cap >> frame;
@@ -31,10 +45,13 @@ void track_balls(std::string s, std::vector<cv::Rect> bboxes) {
     tracker->init(frame, bbox);
     trackers.push_back(tracker);
   }
+  VideoWriter writer;
+  if (savevideo) {
+    writer = VideoWriter(out_savepath + "billiard_output.avi",
+                         VideoWriter::fourcc('M', 'J', 'P', 'G'), 10,
+                         Size(frame.cols, frame.rows));
+  }
 
-  /*VideoWriter video("outcpp.avi", VideoWriter::fourcc('M', 'J', 'P', 'G'), 10,
-                    Size(frame.cols, frame.rows));
-  */
   while (true) {
     cap >> frame;
     if (frame.empty())
@@ -47,7 +64,9 @@ void track_balls(std::string s, std::vector<cv::Rect> bboxes) {
       }
     }
 
-    // video.write(frame);
+    if (savevideo) {
+      writer.write(frame);
+    }
     imshow("tracker", frame);
 
     if (waitKey(1) == 27)

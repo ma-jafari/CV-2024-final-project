@@ -1,3 +1,4 @@
+// Alessandro Di Frenna
 #ifndef BallDetection
 #define BallDetection
 #include "field_detection.hpp"
@@ -26,8 +27,8 @@ std::vector<cv::Vec3f> get_balls(cv::Mat &in_img);
  * FUNCTIONS---------------------------------------------*/
 void erode_image(const cv::Mat &current_image, cv::Mat &closed,
                  int erosion_size);
-void erode_image(const cv::Mat &current_image, cv::Mat &dilated,
-                 int dilation_size);
+void dilate_image(const cv::Mat &current_image, cv::Mat &dilated,
+                  int dilation_size);
 void get_circles(const cv::Mat &input_img, std::vector<cv::Vec3f> &circles,
                  float sensibility, ball_detection_params &ball_params);
 void select_circles(std::vector<cv::Vec3f> &circles,
@@ -40,22 +41,5 @@ std::vector<std::vector<float>> calculate_predictedBoxes(
 void draw_circles(std::vector<cv::Vec3f> &circles, const cv::Mat &image);
 void draw_bboxes(const std::vector<std::vector<cv::Point2f>> &vertices,
                  cv::Mat &image);
-
-float calculateArea(const std::vector<float> &box);
-float calculateIntersection(const std::vector<float> &box1,
-                            const std::vector<float> &box2);
-float calculateIoU(const std::vector<float> &box1,
-                   const std::vector<float> &box2);
-float calculateAccuracy(const std::vector<std::vector<float>> &predictedBoxes,
-                        const std::vector<std::vector<float>> &groundTruthBoxes,
-                        float threshold);
-
-std::vector<cv::Point2f> OMOGRAFIA(const std::vector<cv::Vec3f> circles,
-                                   const Vec4Points vertices, int width,
-                                   int height);
-
-bool extractLabelsFromFile(const std::string &filename,
-                           std::vector<std::vector<int>> &allLabels);
-cv::Scalar computeDominantColor(const cv::Mat &img);
 
 #endif // !BallDetection

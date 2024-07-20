@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
-void track_balls(std::string s, std::vector<cv::Rect>);
+void track_balls(std::string path, std::vector<cv::Rect> bboxes, bool savevideo,
+                 std::string out_savepath);
 
 #endif // !BallTracking

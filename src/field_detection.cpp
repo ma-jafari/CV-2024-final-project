@@ -10,8 +10,6 @@
 #include <opencv2/imgproc.hpp>
 #include <vector>
 
-#define __PRINTS
-
 // colors used for visualization of clustered lines
 cv::Scalar line_colors[4] = {cv::Scalar(255, 0, 0), cv::Scalar(0, 255, 0),
                              cv::Scalar(0, 0, 255), cv::Scalar(0, 255, 255)};
@@ -56,7 +54,6 @@ void get_field_contours(const Mat &in, Mat &gray_contours,
   /* dilate(gray_contours, gray_contours,
           getStructuringElement(MORPH_RECT, Size(3, 3)));
    return;*/
-  // TODO: CHANGE THIS PROBABLY
   vector<vector<Point>> contours;
   vector<Vec4i> hierarchy;
   findContours(canny_output, contours, hierarchy, RETR_TREE,
@@ -165,10 +162,11 @@ Vec2i intersect_hough_lines(Vec2f line1, Vec2f line2) {
 // function that performs the actual table detection, takes as input the raw BGR
 // image and returns a Vec4Points (typedef from field_detection.hpp) which is a
 // Vec of 4 vertices of the table
-Vec4Points detect_field(const cv::Mat &input_image) {
+// show_intermediate allows to see intermediate steps of the pipeline when set
+// to true
+Vec4Points detect_field(const cv::Mat &input_image, bool show_intermediate) {
   using namespace cv;
   using namespace std;
-  bool show_intermediate = false;
   Mat in = input_image.clone();
 
   noise_removal_preprocess(in, show_intermediate);

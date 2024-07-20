@@ -64,7 +64,7 @@ void get_field_contours(const Mat &in, Mat &gray_contours,
   }
   // imshow("Contours", countours);
   cvtColor(countours, gray_contours, COLOR_BGR2GRAY);
-  imshow("contours", gray_contours);
+  //  imshow("contours", gray_contours);
 }
 void get_hough_lines(const cv::Mat &gray_contours, vector<Vec2f> &lines) {
   //  NOTE: 1.3f instead of 1.0f to give some leeway for detecting not perfectly

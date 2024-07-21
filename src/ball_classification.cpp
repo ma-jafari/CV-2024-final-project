@@ -7,7 +7,7 @@
 
 ball_class classify_ball(const cv::Mat &img) {
   using namespace cv;
-  constexpr int color_threshold_white = 110;
+  constexpr int color_threshold_white = 100;
   Mat only_white_pixels;
   inRange(img,
           Scalar(color_threshold_white, color_threshold_white,
@@ -33,13 +33,16 @@ ball_class classify_ball(const cv::Mat &img) {
       1.0 - static_cast<double>(countNonZero(only_black_pixels)) /
                 (only_black_pixels.rows * only_black_pixels.cols);
   ball_class label;
-  if (black_pixels_percent > 0.15) {
+  constexpr double black_percent_thresh = 0.19;
+  constexpr double white_percent_thresh = 0.20;
+  constexpr double striped_percent_thresh = 0.05;
+  if (black_pixels_percent > black_percent_thresh) {
     label = ball_class::EIGHT_BALL;
     // std::cout << "EIGHT_BALL" << std::endl;
-  } else if (white_pixels_percent > 0.20) {
+  } else if (white_pixels_percent > white_percent_thresh) {
     label = ball_class::CUE;
     // std::cout << "CUE" << std::endl;
-  } else if (white_pixels_percent > 0.03) {
+  } else if (white_pixels_percent > striped_percent_thresh) {
     label = ball_class::STRIPED;
     // std::cout << "STRIPED" << std::endl;
   } else {

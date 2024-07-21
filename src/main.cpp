@@ -129,28 +129,29 @@ int main(int argc, char **argv) {
       Point2f center = (box[0] + box[2]) * 0.5;
       float radius = (norm(box[0] - box[2]) * 0.5) * 2 / 3;
 
+      Scalar ball_class_color = ball_class2color(classifiedBall);
       if (classifiedBall == ball_class::STRIPED) {
-        rectangle(classifiedImg, rect, Scalar(0, 255, 0), 2);
+        rectangle(classifiedImg, rect, ball_class_color, 2);
         stripped_balls.push_back(center);
         circle(mask_stripped, center, radius, Scalar(255), -1);
       } else if (classifiedBall == ball_class::SOLID) {
-        rectangle(classifiedImg, rect, Scalar(0, 0, 255), 2);
+        rectangle(classifiedImg, rect, ball_class_color, 2);
         solid_balls.push_back(center);
         circle(mask_solid, center, radius, Scalar(255), -1);
       } else if (classifiedBall == ball_class::CUE) {
-        rectangle(classifiedImg, rect, Scalar(255, 255, 255),
+        rectangle(classifiedImg, rect, ball_class_color,
                   2); // White for white ball
         white_balls.push_back(center);
         circle(mask_white, center, radius, Scalar(255), -1);
       } else if (classifiedBall == ball_class::EIGHT_BALL) {
-        rectangle(classifiedImg, rect, Scalar(0, 0, 0),
+        rectangle(classifiedImg, rect, ball_class_color,
                   2); // Black for black ball
         black_balls.push_back(center);
         circle(mask_black, center, radius, Scalar(255), -1);
       }
       pred_classes[j] = classifiedBall;
     }
-    imshow("classified image", classifiedImg);
+    imshow(frameAndMasksNames[k] + " classified image", classifiedImg);
 
     vector<Mat> ballMasks = {mask_white, mask_black, mask_solid, mask_stripped};
     ComputeMeanIoU(frame, gtMask, vertices, path, ballMasks);

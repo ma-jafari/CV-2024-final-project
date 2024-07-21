@@ -204,7 +204,7 @@ std::vector<cv::Vec3f> get_balls(cv::Mat &in_img) {
 
   int kernel_DILATION = 3;
   int kernel_EROSION = 3;
-  float precisione_DIL = 13; // 12;
+  float precisione_DIL = 9; // 12;
   float precisione_ERO = 11.5;
 
   ball_detection_params ball_params;

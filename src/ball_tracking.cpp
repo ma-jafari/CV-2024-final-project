@@ -1,4 +1,5 @@
 /*Author: Matteo De Gobbi */
+#include "ball_classification.hpp"
 #include "opencv2/highgui.hpp"
 #include <cstddef>
 #include <filesystem>
@@ -16,6 +17,7 @@
 #include <string>
 #include <vector>
 
+// returns the path to the mp4 clip stored inside folderpath
 std::string find_mp4_video(std::string folderpath) {
   namespace fs = std::filesystem;
 
@@ -26,7 +28,8 @@ std::string find_mp4_video(std::string folderpath) {
   }
   return "";
 }
-void track_balls(std::string path, std::vector<cv::Rect> bboxes, bool savevideo,
+void track_balls(std::string path, std::vector<cv::Rect> &bboxes,
+                 std::vector<ball_class> &ball_classes, bool savevideo,
                  std::string out_savepath) {
   using namespace cv;
   std::string filename = find_mp4_video(path);
@@ -61,6 +64,9 @@ void track_balls(std::string path, std::vector<cv::Rect> bboxes, bool savevideo,
       bool isok = trackers[i]->update(frame, bboxes[i]);
       if (isok) {
         rectangle(frame, bboxes[i], Scalar(255, 255, 0), 2, LINE_4);
+      } else {
+        bboxes.erase(bboxes.begin() + i);
+        trackers.erase(trackers.begin() + i);
       }
     }
 

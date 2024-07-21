@@ -184,6 +184,7 @@ double computeAP(const vector<Rect> &gtBoxes, const vector<Rect> &predBoxes,
   computePrecisionRecall(gtBoxes, predBoxes, gtClassIDs, predClassIDs,
                          precisions, recalls, classID);
 
+  /*
   cout << "Precisions:";
   for (auto &el : precisions) {
     cout << el << ",";
@@ -194,6 +195,7 @@ double computeAP(const vector<Rect> &gtBoxes, const vector<Rect> &predBoxes,
     cout << el << ",";
   }
   cout << endl;
+  */
 
   // 11 levels where precision is interpolated according to pascal voc
   vector<double> recall_levels = {0.0, 0.1, 0.2, 0.3, 0.4, 0.5,
@@ -225,27 +227,28 @@ double computeAP(const vector<Rect> &gtBoxes, const vector<Rect> &predBoxes,
 double computeMeanAP(const vector<Rect> &gtBoxes, const vector<Rect> &predBoxes,
                      vector<ball_class> &gtClassIDs,
                      vector<ball_class> &predClassIDs) {
-  cout << "STRIPED-------------------------------------------" << endl;
+  // cout << "STRIPED-------------------------------------------" << endl;
 
   double stripedAP = computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs,
                                ball_class::STRIPED);
 
-  cout << stripedAP << "------------------------------------------" << endl;
+  // cout << stripedAP << "------------------------------------------" << endl;
 
-  cout << "SOLID--------------------------------------" << endl;
+  // cout << "SOLID--------------------------------------" << endl;
   double solidAP = computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs,
                              ball_class::SOLID);
 
-  cout << solidAP << "------------------------------------------" << endl;
-  cout << "CUE----------------------------------------" << endl;
+  // cout << solidAP << "------------------------------------------" << endl;
+  // cout << "CUE----------------------------------------" << endl;
   double cueAP =
       computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs, ball_class::CUE);
 
-  cout << cueAP << "------------------------------------------" << endl;
-  cout << "8BALL-----------------------------------------" << endl;
+  // cout << cueAP << "------------------------------------------" << endl;
+  // cout << "8BALL-----------------------------------------" << endl;
   double eightballAP = computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs,
                                  ball_class::EIGHT_BALL);
 
-  cout << eightballAP << "------------------------------------------" << endl;
+  // cout << eightballAP << "------------------------------------------" <<
+  // endl;
   return (solidAP + stripedAP + cueAP + eightballAP) / 4;
 }

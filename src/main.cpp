@@ -345,7 +345,6 @@ int main(int argc, char **argv) {
   vector<cv::Rect> bbox_rectangles = compute_bboxes(selected_balls);
 
   // NOTE: ball classification
-  int predClassId;
   vector<ball_class> pred_classes(vertices_boxes.size());
 
   // Vectors to store circles for each class
@@ -473,12 +472,11 @@ int main(int argc, char **argv) {
 
   imshow("Bounding Boxes", Bboxes_img);
 
-  //    cout << "Solid ball average precision" << averagePrecision << endl;
-
   cout << computeMeanAP(gtBoxes, predBoxes, gt_classes, pred_classes) << endl;
   drawMinimap(predBoxes, vertices, pred_classes);
-  track_balls(path, predBoxes, savevideo, savepath);
+
+  track_balls(path, predBoxes, pred_classes, savevideo, savepath);
+
   waitKey();
   return 0;
-  // >>>>>>> origin/tracking
 }

@@ -118,39 +118,60 @@ int main(int argc, char **argv) {
 
     // vector<cv::Rect> bbox_rectangles;
     // Classify balls within the boxes
+
+    // Apply the field mask to the dark green mask
+    Mat clonedFrame = frame.clone();
+    Mat fieldMaskCombined;
+    bitwise_or(clonedFrame, mask, fieldMaskCombined);
+    // vector<cv::Rect> bbox_rectangles;
+    // Classify balls within the boxes
     for (int j = 0; j < vertices_boxes.size(); j++) {
       vector<Point2f> box = vertices_boxes[j];
       Rect rect(box[0],
                 box[2]); // Assuming box[0] is top-left and
                          // box[2] is bottom-right
+                         // bbox_rectangles.push_back(rect);
       Mat roi = frame(rect);
 
+      // namedWindow("test");
+
+      // resizeWindow("test", 400, 300);
+      // imshow("test", ballroi);
       ball_class classifiedBall = classify_ball(roi);
       Point2f center = (box[0] + box[2]) * 0.5;
       float radius = (norm(box[0] - box[2]) * 0.5) * 2 / 3;
 
-      Scalar ball_class_color = ball_class2color(classifiedBall);
+      Scalar box_color = ball_class2color(classifiedBall);
       if (classifiedBall == ball_class::STRIPED) {
-        rectangle(classifiedImg, rect, ball_class_color, 2);
+        rectangle(classifiedImg, rect, box_color, 2);
         stripped_balls.push_back(center);
-        circle(mask_stripped, center, radius, Scalar(255), -1);
+        circle(fieldMaskCombined, center, radius, Scalar(255, 0, 0),
+               -1); // Color for striped balls
       } else if (classifiedBall == ball_class::SOLID) {
-        rectangle(classifiedImg, rect, ball_class_color, 2);
+        rectangle(classifiedImg, rect, box_color, 2);
         solid_balls.push_back(center);
-        circle(mask_solid, center, radius, Scalar(255), -1);
+        circle(fieldMaskCombined, center, radius, Scalar(0, 0, 255),
+               -1); // Color for solid balls
       } else if (classifiedBall == ball_class::CUE) {
-        rectangle(classifiedImg, rect, ball_class_color,
+        rectangle(classifiedImg, rect, box_color,
                   2); // White for white ball
         white_balls.push_back(center);
-        circle(mask_white, center, radius, Scalar(255), -1);
+        circle(fieldMaskCombined, center, radius, Scalar(255, 255, 255),
+               -1); // Color for cue/white balls
       } else if (classifiedBall == ball_class::EIGHT_BALL) {
-        rectangle(classifiedImg, rect, ball_class_color,
+        rectangle(classifiedImg, rect, box_color,
                   2); // Black for black ball
         black_balls.push_back(center);
-        circle(mask_black, center, radius, Scalar(255), -1);
+        circle(fieldMaskCombined, center, radius, Scalar(0, 0, 0),
+               -1); // Color for black balls
       }
       pred_classes[j] = classifiedBall;
     }
+
+    // Display results
+    imshow("Segmentation Result", fieldMaskCombined);
+    // imshow("Final Result", combinedResult); // Shows the final result with
+    // combinedResult on top of the original frame
     imshow(frameAndMasksNames[k] + " classified image", classifiedImg);
 
     vector<Mat> ballMasks = {mask_white, mask_black, mask_solid, mask_stripped};

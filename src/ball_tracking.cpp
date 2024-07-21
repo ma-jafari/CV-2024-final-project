@@ -1,5 +1,7 @@
 /*Author: Matteo De Gobbi */
 #include "ball_classification.hpp"
+#include "field_detection.hpp"
+#include "minimap.hpp"
 #include "opencv2/highgui.hpp"
 #include <cstddef>
 #include <filesystem>
@@ -30,7 +32,7 @@ std::string find_mp4_video(std::string folderpath) {
 }
 void track_balls(std::string path, std::vector<cv::Rect> &bboxes,
                  std::vector<ball_class> &ball_classes, bool savevideo,
-                 std::string out_savepath) {
+                 std::string out_savepath, Vec4Points table_vertices) {
   using namespace cv;
   std::string filename = find_mp4_video(path);
 
@@ -41,7 +43,8 @@ void track_balls(std::string path, std::vector<cv::Rect> &bboxes,
   }
   Mat frame;
   cap >> frame;
-
+  int minimap_w = frame.cols / 3;
+  int minimap_h = frame.rows / 3;
   std::vector<Ptr<Tracker>> trackers;
   for (const auto &bbox : bboxes) {
     Ptr<Tracker> tracker = TrackerCSRT::create();
@@ -55,8 +58,10 @@ void track_balls(std::string path, std::vector<cv::Rect> &bboxes,
                          Size(frame.cols, frame.rows));
   }
 
-  while (true) {
-    cap >> frame;
+  // Matrix to store the trail of balls across frames
+  Mat trailmap = Mat::zeros(minimap_h, minimap_w, CV_8UC3);
+
+  while (cap.read(frame)) {
     if (frame.empty())
       break;
 
@@ -73,8 +78,19 @@ void track_balls(std::string path, std::vector<cv::Rect> &bboxes,
     if (savevideo) {
       writer.write(frame);
     }
-    imshow("tracker", frame);
+    Mat minimap;
 
+    drawMinimap(bboxes, table_vertices, ball_classes, minimap, trailmap,
+                minimap_w, minimap_h);
+    // we draw the map in the bottom left corner of the frame
+    int x = 0;
+    int y = frame.rows - minimap.rows;
+    cv::Rect minimap_roi(x, y, minimap.cols, minimap.rows);
+    minimap.copyTo(frame(minimap_roi));
+
+    //   imshow("minimap", minimap);
+    imshow("tracker", frame);
+    // skip video if ESC is pressed
     if (waitKey(1) == 27)
       break;
   }

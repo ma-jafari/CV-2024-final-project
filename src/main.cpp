@@ -473,9 +473,9 @@ int main(int argc, char **argv) {
   imshow("Bounding Boxes", Bboxes_img);
 
   cout << computeMeanAP(gtBoxes, predBoxes, gt_classes, pred_classes) << endl;
-  drawMinimap(predBoxes, vertices, pred_classes);
+  // drawMinimap(predBoxes, vertices, pred_classes);
 
-  track_balls(path, predBoxes, pred_classes, savevideo, savepath);
+  track_balls(path, predBoxes, pred_classes, savevideo, savepath, vertices);
 
   waitKey();
   return 0;

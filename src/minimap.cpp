@@ -1,4 +1,5 @@
 /* Alessandro Di Frenna */
+#include "minimap.hpp"
 #include "ball_classification.hpp"
 #include "field_detection.hpp"
 #include <iostream>
@@ -66,10 +67,10 @@ void reorderVerticesClockwise(Vec4Points &vertices) {
     vertices.val[i] = points[i];
   }
 }
-void drawMinimap(const std::vector<cv::Rect> rectangles, Vec4Points vertices,
-                 const std::vector<ball_class> balls) {
-  int width = 700;
-  int height = 350;
+void drawMinimap(const std::vector<cv::Rect> &rectangles, Vec4Points vertices,
+                 const std::vector<ball_class> &balls, cv::Mat &minimap,
+                 cv::Mat &trailmap, int minimap_w, int minimap_h) {
+
   std::string imagePath = "../table.png";
 
   reorderVerticesClockwise(vertices);
@@ -90,9 +91,9 @@ void drawMinimap(const std::vector<cv::Rect> rectangles, Vec4Points vertices,
 
   std::vector<cv::Point2f> dst_points(4);
   dst_points[0] = cv::Point2f(0, 0);
-  dst_points[1] = cv::Point2f(width, 0);
-  dst_points[2] = cv::Point2f(width, height);
-  dst_points[3] = cv::Point2f(0, height);
+  dst_points[1] = cv::Point2f(minimap_w, 0);
+  dst_points[2] = cv::Point2f(minimap_w, minimap_h);
+  dst_points[3] = cv::Point2f(0, minimap_h);
 
   cv::Mat homography_matrix = cv::getPerspectiveTransform(points, dst_points);
 
@@ -109,31 +110,31 @@ void drawMinimap(const std::vector<cv::Rect> rectangles, Vec4Points vertices,
   std::vector<cv::Point2f> mapped_points;
   cv::perspectiveTransform(points_to_map, mapped_points, homography_matrix);
 
-  cv::Mat image = cv::imread(imagePath, cv::IMREAD_COLOR);
-  cv::Size size(width, height);
-  cv::resize(image, image, size);
+  minimap = cv::imread(imagePath, cv::IMREAD_COLOR);
+  cv::Size size(minimap_w, minimap_h);
+  cv::resize(minimap, minimap, size);
   for (int i = 0; i < rectangles.size(); i++) {
 
     ball_class label = balls[i];
 
     switch (label) {
     case ball_class::EIGHT_BALL:
-      cv::circle(image, mapped_points[i], 10, cv::Scalar(0, 0, 0), -1);
+      cv::circle(minimap, mapped_points[i], 10, cv::Scalar(0, 0, 0), -1);
       break;
     case ball_class::CUE:
-      cv::circle(image, mapped_points[i], 10, cv::Scalar(255, 255, 255), -1);
+      cv::circle(minimap, mapped_points[i], 10, cv::Scalar(255, 255, 255), -1);
       break;
     case ball_class::STRIPED:
-      cv::circle(image, mapped_points[i], 10, cv::Scalar(0, 0, 255), -1);
+      cv::circle(minimap, mapped_points[i], 10, cv::Scalar(0, 0, 255), -1);
       break;
     case ball_class::SOLID:
-      cv::circle(image, mapped_points[i], 10, cv::Scalar(255, 0, 0), -1);
+      cv::circle(minimap, mapped_points[i], 10, cv::Scalar(255, 0, 0), -1);
       break;
     }
   }
   for (int i = 0; i < rectangles.size(); i++) {
-    cv::circle(image, mapped_points[i], 1, cv::Scalar(255, 0, 255), -1);
+    cv::circle(trailmap, mapped_points[i], 2, cv::Scalar(255, 255, 255), -1);
   }
-  cv::imshow("Image", image);
-  cv::waitKey(0);
+
+  minimap += trailmap;
 }

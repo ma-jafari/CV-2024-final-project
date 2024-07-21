@@ -248,8 +248,6 @@ void computePrecisionRecall(const vector<Rect> &gtBoxes,
     incremental_precisions.push_back(static_cast<double>(tp) / (tp + fp));
     incremental_recalls.push_back(static_cast<double>(tp) / n_gtboxes_class);
   }
-
-  cout << endl;
 }
 
 // Function to compute Average Precision (AP) using Pascal VOC 11-point

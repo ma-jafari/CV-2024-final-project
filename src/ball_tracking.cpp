@@ -9,8 +9,7 @@
 #include <opencv2/core/utility.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
-//#include <opencv2/tracking.hpp>
-//#include <opencv2/tracking/tracking_legacy.hpp>
+#include <opencv2/tracking.hpp>
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/videoio.hpp>
 #include <string>
@@ -36,15 +35,23 @@ void track_balls(std::string path, std::vector<cv::Rect> bboxes, bool savevideo,
     std::cout << "Cannot open the video file. \n";
     return;
   }
+
   Mat frame;
   cap >> frame;
 
-  std::vector<Ptr<Tracker>> trackers;
+  /*for (const auto &bbox : bboxes) {
+    rectangle(frame, bbox, Scalar(255));
+  }*/
+  // imshow("a", frame);
+  //  waitKey();
+  std::vector<Ptr<Tracker>> trackers(bboxes.size());
   for (const auto &bbox : bboxes) {
-    Ptr<Tracker> tracker;
+    Ptr<Tracker> tracker = TrackerCSRT::create();
     tracker->init(frame, bbox);
     trackers.push_back(tracker);
+    std::cout << "aa" << std::endl;
   }
+
   VideoWriter writer;
   if (savevideo) {
     writer = VideoWriter(out_savepath + "billiard_output.avi",

@@ -7,4 +7,6 @@
 typedef cv::Vec<cv::Point2i, 4> Vec4Points;
 Vec4Points detect_field(const cv::Mat &input_image, bool show_intermidiate);
 
+void cut_table(const cv::Mat &in, const cv::Mat &mask, Vec4Points vertices,
+               cv::Mat &cutout);
 #endif // FIELD_DETECTION_H

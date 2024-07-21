@@ -67,62 +67,67 @@ void loadGroundTruthAndPredictions(const vector<vector<int>> &data,
 }
 
 // Compute IoU per class
-double ComputeIoUPerClass(const Mat& predMask, const Mat& gtMask, int classValue) {
-	// Initialize counters
-	int TP = 0, FP = 0, FN = 0;
+double ComputeIoUPerClass(const Mat &predMask, const Mat &gtMask,
+                          int classValue) {
+  // Initialize counters
+  int TP = 0, FP = 0, FN = 0;
 
-	for (int y = 0; y < predMask.rows; ++y) {
-		for (int x = 0; x < predMask.cols; ++x) {
-			uchar predValue = predMask.at<uchar>(y, x);
-			uchar gtValue = gtMask.at<uchar>(y, x);
-			if (predValue != 0 && predValue != 5 && predValue != 1 && predValue != 2) {
-				if (classValue != 0 && classValue != 5 && classValue != 1 && classValue != 2) {
-					/*					// Define the rectangle boundaries
-										int x_start = max(0, x - 50);
-										int y_start = max(0, y - 50);
-										int x_end = min(predMask.cols, x + 50);
-										int y_end = min(predMask.rows, y + 50);
-										Rect rect(x_start, y_start, x_end - x_start, y_end - y_start);
+  for (int y = 0; y < predMask.rows; ++y) {
+    for (int x = 0; x < predMask.cols; ++x) {
+      uchar predValue = predMask.at<uchar>(y, x);
+      uchar gtValue = gtMask.at<uchar>(y, x);
+      if (predValue != 0 && predValue != 5 && predValue != 1 &&
+          predValue != 2) {
+        if (classValue != 0 && classValue != 5 && classValue != 1 &&
+            classValue != 2) {
+          /*					// Define the rectangle
+             boundaries int x_start = max(0, x - 50); int y_start = max(0, y -
+             50); int x_end = min(predMask.cols, x + 50); int y_end =
+             min(predMask.rows, y + 50); Rect rect(x_start, y_start, x_end -
+             x_start, y_end - y_start);
 
-										// Extract the rectangular regions
-										Mat predRect = predMask(rect);
-										Mat gtRect = gtMask(rect);
+                                                  // Extract the rectangular
+             regions Mat predRect = predMask(rect); Mat gtRect = gtMask(rect);
 
-										// Apply threshold to highlight the class value
-										Mat predRectThresh, gtRectThresh;
-										threshold(predRect, predRectThresh, classValue - 1, 255, THRESH_BINARY);
-										threshold(gtRect, gtRectThresh, classValue - 1, 255, THRESH_BINARY);
+                                                  // Apply threshold to
+             highlight the class value Mat predRectThresh, gtRectThresh;
+                                                  threshold(predRect,
+             predRectThresh, classValue - 1, 255, THRESH_BINARY);
+                                                  threshold(gtRect,
+             gtRectThresh, classValue - 1, 255, THRESH_BINARY);
 
-										// Draw a red dot at the center of the rectangle
-										Point center(predRect.cols / 2, predRect.rows / 2);
-										circle(predRectThresh, center, 3, Scalar(0, 0, 255), -1);
-										circle(gtRectThresh, center, 3, Scalar(0, 0, 255), -1);
+                                                  // Draw a red dot at the
+             center of the rectangle Point center(predRect.cols / 2,
+             predRect.rows / 2); circle(predRectThresh, center, 3, Scalar(0, 0,
+             255), -1); circle(gtRectThresh, center, 3, Scalar(0, 0, 255), -1);
 
-										// Combine the two regions horizontally
-										Mat combined;
-										hconcat(predRectThresh, gtRectThresh, combined);
+                                                  // Combine the two regions
+             horizontally Mat combined; hconcat(predRectThresh, gtRectThresh,
+             combined);
 
-										// Display the combined image
-										imshow("Predicted vs Ground Truth", combined);
-										waitKey(0); // Wait for a key press to close the window*/
-				}
-			}
+                                                  // Display the combined image
+                                                  imshow("Predicted vs Ground
+             Truth", combined); waitKey(0); // Wait for a key press to close the
+             window*/
+        }
+      }
 
-			if (predValue == classValue && gtValue == classValue) {
-				TP++;
-			}
-			else if (predValue == classValue && gtValue != classValue) {
-				FP++;
-			}
-			else if (predValue != classValue && gtValue == classValue) {
-				FN++;
-			}
-		}
-	}
+      if (predValue == classValue && gtValue == classValue) {
+        TP++;
+      } else if (predValue == classValue && gtValue != classValue) {
+        FP++;
+      } else if (predValue != classValue && gtValue == classValue) {
+        FN++;
+      }
+    }
+  }
 
-	// Compute IoU
-	if (TP + FP + FN == 0) return 0.0;
-	return static_cast<double>(TP) / (static_cast<double>(TP) + static_cast<double>(FP) + static_cast<double>(FN));
+  // Compute IoU
+  if (TP + FP + FN == 0)
+    return 0.0;
+  return static_cast<double>(TP) /
+         (static_cast<double>(TP) + static_cast<double>(FP) +
+          static_cast<double>(FN));
 }
 
 // Function to compute Intersection over Union (IoU)
@@ -140,46 +145,48 @@ double computeIoU(const Rect &gtBox, const Rect &predBox) {
   return static_cast<double>(intersectionArea) / unionArea;
 }
 
-void ComputeMeanIoU(Mat frame, Mat gtMask, Vec4Points vertices, string path, vector<Mat> ballClasses){
-	// Create the combined mask
-	Mat combinedMask = Mat::zeros(frame.size(), CV_8UC1);
+void ComputeMeanIoU(Mat frame, Mat gtMask, Vec4Points vertices, string path,
+                    vector<Mat> ballClasses) {
+  // Create the combined mask
+  Mat combinedMask = Mat::zeros(frame.size(), CV_8UC1);
 
-	// Set field pixels to 5
-	Mat fieldMask = Mat::zeros(frame.size(), CV_8UC1);
-	fillPoly(fieldMask, vertices, Scalar(255));
-	combinedMask.setTo(Scalar(5), fieldMask);
+  // Set field pixels to 5
+  Mat fieldMask = Mat::zeros(frame.size(), CV_8UC1);
+  fillPoly(fieldMask, vertices, Scalar(255));
+  combinedMask.setTo(Scalar(5), fieldMask);
 
-	// Overlay ball masks with respective values
-	Mat ballMasks[4] = { ballClasses[0], ballClasses[1], ballClasses[2], ballClasses[3] };
-	int values[4] = { 1, 2, 3, 4 };
+  // Overlay ball masks with respective values
+  Mat ballMasks[4] = {ballClasses[0], ballClasses[1], ballClasses[2],
+                      ballClasses[3]};
+  int values[4] = {1, 2, 3, 4};
 
-	for (int k = 0; k < 4; ++k) {
-		Mat ballMask = ballMasks[k];
-		Mat resizedBallMask;
-		resize(ballMask, resizedBallMask, combinedMask.size(), 0, 0, INTER_NEAREST);
-		combinedMask.setTo(Scalar(values[k]), resizedBallMask);
-	}
+  for (int k = 0; k < 4; ++k) {
+    Mat ballMask = ballMasks[k];
+    Mat resizedBallMask;
+    resize(ballMask, resizedBallMask, combinedMask.size(), 0, 0, INTER_NEAREST);
+    combinedMask.setTo(Scalar(values[k]), resizedBallMask);
+  }
 
-	// Compute IoU for each class
-	vector<double> classIoUs(6, 0.0);
-	for (int c = 0; c < 6; ++c) {
-		classIoUs[c] = ComputeIoUPerClass(combinedMask, gtMask, c);
-	}
+  // Compute IoU for each class
+  vector<double> classIoUs(6, 0.0);
+  for (int c = 0; c < 6; ++c) {
+    classIoUs[c] = ComputeIoUPerClass(combinedMask, gtMask, c);
+  }
 
-	// Compute mean IoU for this image manually
-	double sumIoU = 0.0;
-	int numClasses = classIoUs.size();
-	for (int c = 0; c < numClasses; ++c) {
-		sumIoU += classIoUs[c];
-	}
-	double meanIoU = (numClasses > 0) ? (sumIoU / numClasses) : 0.0;
+  // Compute mean IoU for this image manually
+  double sumIoU = 0.0;
+  int numClasses = classIoUs.size();
+  for (int c = 0; c < numClasses; ++c) {
+    sumIoU += classIoUs[c];
+  }
+  double meanIoU = (numClasses > 0) ? (sumIoU / numClasses) : 0.0;
 
-	// Print mean IoU results for this image
-	cout << "Mean IoU for image " << path << ":" << endl;
-	for (int c = 0; c < 6; ++c) {
-		cout << "Class " << c << " IoU: " << classIoUs[c] << endl;
-	}
-	cout << "Mean IoU: " << meanIoU << endl;
+  // Print mean IoU results for this image
+  cout << "Mean IoU for image " << path << ":" << endl;
+  for (int c = 0; c < 6; ++c) {
+    cout << "Class " << c << " IoU: " << classIoUs[c] << endl;
+  }
+  cout << "Mean IoU: " << meanIoU << endl;
 }
 
 // Function to compute Precision and Recall for a single class specified by
@@ -230,7 +237,6 @@ void computePrecisionRecall(const vector<Rect> &gtBoxes,
         maxiou_index = j;
       }
     }
-    cout << "maxiou" << maxiou << ",";
     if (maxiou >= iouThreshold) {
       ++tp;
       // true positive, both IoU is above threshold and prediction is correct
@@ -259,6 +265,7 @@ double computeAP(const vector<Rect> &gtBoxes, const vector<Rect> &predBoxes,
   computePrecisionRecall(gtBoxes, predBoxes, gtClassIDs, predClassIDs,
                          precisions, recalls, classID);
 
+  /*
   cout << "Precisions:";
   for (auto &el : precisions) {
     cout << el << ",";
@@ -269,6 +276,7 @@ double computeAP(const vector<Rect> &gtBoxes, const vector<Rect> &predBoxes,
     cout << el << ",";
   }
   cout << endl;
+  */
 
   // 11 levels where precision is interpolated according to pascal voc
   vector<double> recall_levels = {0.0, 0.1, 0.2, 0.3, 0.4, 0.5,
@@ -300,27 +308,28 @@ double computeAP(const vector<Rect> &gtBoxes, const vector<Rect> &predBoxes,
 double computeMeanAP(const vector<Rect> &gtBoxes, const vector<Rect> &predBoxes,
                      vector<ball_class> &gtClassIDs,
                      vector<ball_class> &predClassIDs) {
-  cout << "STRIPED-------------------------------------------" << endl;
+  //  cout << "STRIPED-------------------------------------------" << endl;
 
   double stripedAP = computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs,
                                ball_class::STRIPED);
 
-  cout << stripedAP << "------------------------------------------" << endl;
+  // cout << stripedAP << "------------------------------------------" << endl;
 
-  cout << "SOLID--------------------------------------" << endl;
+  // cout << "SOLID--------------------------------------" << endl;
   double solidAP = computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs,
                              ball_class::SOLID);
 
-  cout << solidAP << "------------------------------------------" << endl;
-  cout << "CUE----------------------------------------" << endl;
+  // cout << solidAP << "------------------------------------------" << endl;
+  // cout << "CUE----------------------------------------" << endl;
   double cueAP =
       computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs, ball_class::CUE);
 
-  cout << cueAP << "------------------------------------------" << endl;
-  cout << "8BALL-----------------------------------------" << endl;
+  // cout << cueAP << "------------------------------------------" << endl;
+  // cout << "8BALL-----------------------------------------" << endl;
   double eightballAP = computeAP(gtBoxes, predBoxes, gtClassIDs, predClassIDs,
                                  ball_class::EIGHT_BALL);
 
-  cout << eightballAP << "------------------------------------------" << endl;
+  // cout << eightballAP << "------------------------------------------" <<
+  // endl;
   return (solidAP + stripedAP + cueAP + eightballAP) / 4;
 }

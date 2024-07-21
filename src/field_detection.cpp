@@ -283,3 +283,14 @@ Vec4Points detect_field(const cv::Mat &input_image, bool show_intermediate) {
   Vec4Points vertices(AC, BC, BD, AD);
   return vertices;
 }
+// cuts out field from the image using the provided mask and vertices
+void cut_table(const cv::Mat &in, const cv::Mat &mask, Vec4Points vertices,
+               cv::Mat &cutout) {
+  bitwise_and(in, mask, cutout);
+  Scalar linecolor = Scalar(255, 0, 0);
+  int linewidth = LINE_4;
+  line(cutout, vertices[0], vertices[1], linecolor, linewidth);
+  line(cutout, vertices[2], vertices[1], linecolor, linewidth);
+  line(cutout, vertices[2], vertices[3], linecolor, linewidth);
+  line(cutout, vertices[3], vertices[0], linecolor, linewidth);
+}

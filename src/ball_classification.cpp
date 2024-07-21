@@ -1,6 +1,7 @@
 /*Author: Matteo De Gobbi */
 #include "ball_classification.hpp"
 #include <iostream>
+#include <opencv2/core/types.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
@@ -61,6 +62,20 @@ ball_class int2ball_class(int i) {
     return ball_class::STRIPED;
   default:
     return ball_class::SOLID;
+  }
+}
+
+// Converts ball_class into the appriopriate color
+cv::Scalar ball_class2color(ball_class c) {
+  switch (c) {
+  case ball_class::CUE:
+    return cv::Scalar(255, 255, 255);
+  case ball_class::EIGHT_BALL:
+    return cv::Scalar(0, 0, 0);
+  case ball_class::SOLID:
+    return cv::Scalar(0, 0, 255);
+  case ball_class::STRIPED:
+    return cv::Scalar(255, 0, 0);
   }
 }
 

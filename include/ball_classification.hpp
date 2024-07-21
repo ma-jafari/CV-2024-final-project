@@ -9,4 +9,6 @@ ball_class int2ball_class(int i);
 
 bool is_ball_near_line(cv::Point2f ball_pos, float radius, cv::Point2f pointA,
                        cv::Point2f pointB);
+
+cv::Scalar ball_class2color(ball_class c);
 #endif

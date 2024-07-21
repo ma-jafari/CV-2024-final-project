@@ -65,7 +65,6 @@ int main(int argc, char **argv) {
   Mat mask = Mat::zeros(frames[0].rows, frames[0].cols, CV_8UC3);
   Vec4Points vertices = detect_field(frames[0], show_intermediate);
   fillPoly(mask, vertices, cv::Scalar(255, 255, 255));
-
   for (int k = 0; k < frames.size(); k++) {
     Mat frame = frames[k];
     Mat gtMask = gtMasks[k];
@@ -74,22 +73,13 @@ int main(int argc, char **argv) {
     vector<double> meanIoUPerClass(6, 0.0);
     vector<int> classIoUCount(6, 0);
 
-    // NOTE: We cut out the table using the boundaries found in the field
-    // detection
     Mat cutout_table;
+
+    // NOTE: We cut find the table boundaries and cut out the table
+    // from the rest of the image
     bitwise_and(frame, mask, cutout_table);
 
-    Scalar linecolor = Scalar(255, 0, 0);
-    int linewidth = LINE_4;
-    line(cutout_table, vertices[0], vertices[1], linecolor, linewidth);
-    line(cutout_table, vertices[2], vertices[1], linecolor, linewidth);
-    line(cutout_table, vertices[2], vertices[3], linecolor, linewidth);
-    line(cutout_table, vertices[3], vertices[0], linecolor, linewidth);
-    if (show_intermediate) {
-
-      imshow("cutout_table", cutout_table);
-      imshow("mask", mask);
-    }
+    cut_table(frame, mask, vertices, cutout_table);
 
     // NOTE: ball detection
     //  NOTE: remove balls on edge of table
@@ -133,13 +123,8 @@ int main(int argc, char **argv) {
       Rect rect(box[0],
                 box[2]); // Assuming box[0] is top-left and
                          // box[2] is bottom-right
-                         // bbox_rectangles.push_back(rect);
       Mat roi = frame(rect);
 
-      // namedWindow("test");
-
-      // resizeWindow("test", 400, 300);
-      // imshow("test", ballroi);
       ball_class classifiedBall = classify_ball(roi);
       Point2f center = (box[0] + box[2]) * 0.5;
       float radius = (norm(box[0] - box[2]) * 0.5) * 2 / 3;
@@ -190,13 +175,12 @@ int main(int argc, char **argv) {
     loadGroundTruthAndPredictions(labels, gtBoxes);
     predBoxes = bbox_rectangles;
     Mat Bboxes_img = frame.clone();
-
-    //    cout << "Solid ball average precision" << averagePrecision << endl;
-
-    cout << computeMeanAP(gtBoxes, predBoxes, gt_classes, pred_classes) << endl;
-    // drawMinimap(predBoxes, vertices, pred_classes);
-    cout << "size" << predBoxes.size() << endl;
-    track_balls(path, predBoxes, savevideo, savepath);
+    cout << "mAP of " << frameAndMasksNames[k] << " "
+         << computeMeanAP(gtBoxes, predBoxes, gt_classes, pred_classes) << endl;
+    // we only do the tracking one the first frame
+    if (k == 0) {
+      track_balls(path, predBoxes, pred_classes, savevideo, savepath, vertices);
+    }
     waitKey(0);
   }
   return 0;

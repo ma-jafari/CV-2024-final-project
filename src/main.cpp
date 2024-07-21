@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
   // NOTE: field detection
   Mat mask = Mat::zeros(frames[0].rows, frames[0].cols, CV_8UC3);
   Vec4Points vertices = detect_field(frames[0], show_intermediate);
-  fillPoly(mask, vertices, cv::Scalar(255, 255, 255));
+  fillPoly(mask, vertices, cv::Scalar(200, 200, 200));
   for (int k = 0; k < frames.size(); k++) {
     Mat frame = frames[k];
     Mat gtMask = gtMasks[k];

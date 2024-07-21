@@ -1,3 +1,4 @@
+/*Author: Matteo De Gobbi */
 #include "ball_classification.hpp"
 #include <iostream>
 #include <opencv2/highgui.hpp>
@@ -12,15 +13,10 @@ ball_class classify_ball(const cv::Mat &img) {
                  color_threshold_white),
           Scalar(255, 255, 255), only_white_pixels);
 
-  /*namedWindow("thresholded");
-  resizeWindow("thresholded", 400, 50);
-  resizeWindow("after closing", 400, 50);
-  */
-  //imshow("thresholded", only_white_pixels);
   morphologyEx(only_white_pixels, only_white_pixels, MORPH_OPEN,
                getStructuringElement(MORPH_RECT, Size(3, 3)));
 
-  //imshow("after closing", only_white_pixels);
+  // imshow("after closing", only_white_pixels);
   double white_pixels_percent =
       static_cast<double>(countNonZero(only_white_pixels)) /
       (only_white_pixels.rows * only_white_pixels.cols);
@@ -35,28 +31,44 @@ ball_class classify_ball(const cv::Mat &img) {
   double black_pixels_percent =
       1.0 - static_cast<double>(countNonZero(only_black_pixels)) /
                 (only_black_pixels.rows * only_black_pixels.cols);
-  // You can fine-tune this threshold
   ball_class label;
-  if (black_pixels_percent > 0.10) {
+  if (black_pixels_percent > 0.15) {
     label = ball_class::EIGHT_BALL;
-    std::cout << "EIGHT_BALL" << std::endl;
-  } else if (white_pixels_percent > 0.15) {
+    // std::cout << "EIGHT_BALL" << std::endl;
+  } else if (white_pixels_percent > 0.20) {
     label = ball_class::CUE;
-    std::cout << "CUE" << std::endl;
+    // std::cout << "CUE" << std::endl;
   } else if (white_pixels_percent > 0.03) {
     label = ball_class::STRIPED;
-    std::cout << "STRIPED" << std::endl;
+    // std::cout << "STRIPED" << std::endl;
   } else {
     label = ball_class::SOLID;
-    std::cout << "SOLID" << std::endl;
+    // std::cout << "SOLID" << std::endl;
   }
-  //waitKey();
+  // waitKey();
   return label;
 }
 
-int ReturnBallClass(ball_class classOfBall) {
-	if (classOfBall == ball_class::CUE) return 1;
-	else if (classOfBall == ball_class::EIGHT_BALL) return 2;
-	else if (classOfBall == ball_class::STRIPED) return 3;
-	else if (classOfBall == ball_class::SOLID) return 4;
+ball_class int2ball_class(int i) {
+  switch (i) {
+  case 1:
+    return ball_class::CUE;
+  case 2:
+    return ball_class::EIGHT_BALL;
+  case 3:
+    return ball_class::SOLID;
+  case 4:
+    return ball_class::STRIPED;
+  default:
+    return ball_class::SOLID;
+  }
+}
+
+bool is_ball_near_line(cv::Point2f ball_pos, float radius, cv::Point2f pointA,
+                       cv::Point2f pointB) {
+  float temp = (pointB.y - pointA.y) * ball_pos.x -
+               (pointB.x - pointA.x) * ball_pos.y + pointB.x * pointA.y -
+               pointB.y * pointA.x;
+  float distance = fabs(temp) / norm(pointB - pointA);
+  return distance < 1.0f * radius;
 }

@@ -1,6 +1,4 @@
-﻿#include <cmath>
-#include <ctime>
-#include <iostream>
+﻿#include <iostream>
 #include <opencv2/core.hpp>
 #include <opencv2/core/hal/interface.h>
 #include <opencv2/core/mat.hpp>
@@ -11,20 +9,19 @@
 #include <opencv2/imgproc.hpp>
 #include <string>
 #include <vector>
-#include <algorithm>
-#include <fstream>
-#include <map>
 
 #include "ball_classification.hpp"
 #include "ball_detection.hpp"
+#include "ball_tracking.hpp"
 #include "field_detection.hpp"
 #include "measurements.hpp"
-#include "functions.h"
+#include "minimap.hpp"
 
 using namespace cv;
 using namespace std;
 
-int main() {
+// <<<<<<< HEAD
+/*int main() {
 	string base_path = "../data/";
 	vector<string> names = { "game1_clip1", "game1_clip2", "game1_clip3", "game1_clip4",
 							 "game2_clip1", "game2_clip2", "game3_clip1", "game3_clip2",
@@ -235,6 +232,7 @@ int main() {
 		predClassIds[i] = predClassId;
 	}
 
+	*/
 	/*// Compute the mean AP for each class
 	vector<double> meanAPPerClass(4, 0.0);
 	for (int c = 0; c < 4; ++c) {
@@ -254,7 +252,229 @@ int main() {
 	for (int c = 0; c < 4; ++c) {
 		cout << "Class " << c + 1 << " Average Precision: " << meanAPPerClass[c] << endl;
 	}
-	cout << "Mean Average Precision (mAP): " << mAP << endl;*/
+	cout << "Mean Average Precision (mAP): " << mAP << endl;
 
-	return 0;
+	return 0;*/
+// =======
+int main(int argc, char **argv) {
+  const String keys =
+      "{help h usage ? | | print the help message }"
+      "{i intermidiate| | show intermediate steps of the algorithm}"
+      "{s save | | save the output video on a file}"
+      "{savepath | | path of the directory where the output video wil be "
+      "saved-s or --save are used}"
+      "{@path|../data/game1_clip1 | path to the directory of the clip}";
+  CommandLineParser parser(argc, argv, keys);
+  parser.about("Billiard Analisys");
+  if (parser.has("help")) {
+    parser.printMessage();
+    return 0;
+  }
+  bool show_intermediate = parser.has("i");
+  bool savevideo = parser.has("s");
+  string savepath = savevideo ? parser.get<string>("savepath") : "";
+  string path = parser.get<string>("@path");
+
+  string imagePath = path + "/frames/frame_first.png";
+  Mat first_frame = imread(imagePath);
+  if (first_frame.empty()) {
+    cerr << "Error loading image file: " << imagePath << endl;
+    return -1;
+  }
+
+  string maskPath = path + "/masks/frame_first.png";
+  Mat gtMask = imread(maskPath, IMREAD_GRAYSCALE);
+  if (gtMask.empty()) {
+	  cerr << "Error loading mask file: " << maskPath << endl;
+	  return -1;
+  }
+
+  vector<Rect> predBoxes;
+  vector<int> predClassIds;
+  vector<double> meanIoUPerClass(6, 0.0);
+  vector<int> classIoUCount(6, 0);
+
+  Mat cutout_table;
+  Mat mask = Mat::zeros(first_frame.rows, first_frame.cols, CV_8UC3);
+
+  // NOTE: field detection
+  // NOTE: We cut find the table boundaries and cut out the table
+  // from the rest of the image
+  Vec4Points vertices = detect_field(first_frame, show_intermediate);
+  fillPoly(mask, vertices, cv::Scalar(255, 255, 255));
+  bitwise_and(first_frame, mask, cutout_table);
+
+  Scalar linecolor = Scalar(255, 0, 0);
+  int linewidth = LINE_4;
+  line(cutout_table, vertices[0], vertices[1], linecolor, linewidth);
+  line(cutout_table, vertices[2], vertices[1], linecolor, linewidth);
+  line(cutout_table, vertices[2], vertices[3], linecolor, linewidth);
+  line(cutout_table, vertices[3], vertices[0], linecolor, linewidth);
+  if (show_intermediate) {
+
+    imshow("cutout_table", cutout_table);
+    imshow("mask", mask);
+  }
+
+  // NOTE: ball detection
+  //  NOTE: remove balls on edge of table
+  vector<Vec3f> detected_balls = get_balls(cutout_table);
+  vector<Vec3f> selected_balls;
+  for (int i = 0; i < detected_balls.size(); ++i) {
+    Point2f ball = Point2f(detected_balls[i][0], detected_balls[i][1]);
+    float radius = detected_balls[i][2];
+    if (!(is_ball_near_line(ball, radius, vertices[0], vertices[1]) ||
+          is_ball_near_line(ball, radius, vertices[1], vertices[2]) ||
+          is_ball_near_line(ball, radius, vertices[2], vertices[3]) ||
+          is_ball_near_line(ball, radius, vertices[3], vertices[0]))) {
+      selected_balls.push_back(detected_balls[i]);
+    }
+  }
+
+  vector<vector<cv::Point2f>> vertices_boxes =
+      compute_bbox_vertices(selected_balls);
+  Mat classifiedImg = first_frame.clone();
+  vector<cv::Rect> bbox_rectangles = compute_bboxes(selected_balls);
+
+  // NOTE: ball classification
+  int predClassId;
+  vector<ball_class> pred_classes(vertices_boxes.size());
+
+  // Vectors to store circles for each class
+  vector<Point2f> stripped_balls;
+  vector<Point2f> solid_balls;
+  vector<Point2f> white_balls;
+  vector<Point2f> black_balls;
+
+  // Masks for each class
+  Mat mask_stripped = Mat::zeros(first_frame.size(), CV_8UC1);
+  Mat mask_solid = Mat::zeros(first_frame.size(), CV_8UC1);
+  Mat mask_white = Mat::zeros(first_frame.size(), CV_8UC1);
+  Mat mask_black = Mat::zeros(first_frame.size(), CV_8UC1);
+
+
+  // vector<cv::Rect> bbox_rectangles;
+  // Classify balls within the boxes
+  for (int j = 0; j < vertices_boxes.size(); j++) {
+    vector<Point2f> box = vertices_boxes[j];
+    Rect rect(box[0],
+              box[2]); // Assuming box[0] is top-left and
+                       // box[2] is bottom-right
+    // bbox_rectangles.push_back(rect);
+    Mat roi = first_frame(rect);
+
+    // namedWindow("test");
+
+    // resizeWindow("test", 400, 300);
+    // imshow("test", ballroi);
+	ball_class classifiedBall = classify_ball(roi);
+	Point2f center = (box[0] + box[2]) * 0.5;
+	float radius = (norm(box[0] - box[2]) * 0.5) * 2 / 3;
+
+	if (classifiedBall == ball_class::STRIPED) {
+		rectangle(classifiedImg, rect, Scalar(0, 255, 0), 2);
+		stripped_balls.push_back(center);
+		circle(mask_stripped, center, radius, Scalar(255), -1);
+	}
+	else if (classifiedBall == ball_class::SOLID) {
+		rectangle(classifiedImg, rect, Scalar(0, 0, 255), 2);
+		solid_balls.push_back(center);
+		circle(mask_solid, center, radius, Scalar(255), -1);
+	}
+	else if (classifiedBall == ball_class::CUE) {
+		rectangle(classifiedImg, rect, Scalar(255, 255, 255), 2); // White for white ball
+		white_balls.push_back(center);
+		circle(mask_white, center, radius, Scalar(255), -1);
+	}
+	else if (classifiedBall == ball_class::EIGHT_BALL) {
+		rectangle(classifiedImg, rect, Scalar(0, 0, 0), 2); // Black for black ball
+		black_balls.push_back(center);
+		circle(mask_black, center, radius, Scalar(255), -1);
+	}
+    pred_classes[j] = classifiedBall;
+  }
+  imshow("classified image", classifiedImg);
+
+
+  // Create the combined mask
+  Mat combinedMask = Mat::zeros(first_frame.size(), CV_8UC1);
+
+  // Set field pixels to 5
+  Mat fieldMask = Mat::zeros(first_frame.size(), CV_8UC1);
+  fillPoly(fieldMask, vertices, Scalar(255));
+  combinedMask.setTo(Scalar(5), fieldMask);
+
+  // Overlay ball masks with respective values
+  Mat ballMasks[4] = { mask_stripped, mask_solid, mask_white, mask_black };
+  int values[4] = { 1, 2, 3, 4 };
+
+  for (int k = 0; k < 4; ++k) {
+	  Mat ballMask = ballMasks[k];
+	  Mat resizedBallMask;
+	  resize(ballMask, resizedBallMask, combinedMask.size(), 0, 0, INTER_NEAREST);
+	  combinedMask.setTo(Scalar(values[k]), resizedBallMask);
+  }
+
+  // Compute IoU for each class
+  vector<double> classIoUs(6, 0.0);
+  for (int c = 0; c < 6; ++c) {
+	  classIoUs[c] = ComputeIoUPerClass(combinedMask, gtMask, c);
+  }
+
+  // Compute mean IoU for this image manually
+  double sumIoU = 0.0;
+  int numClasses = classIoUs.size();
+  for (int c = 0; c < numClasses; ++c) {
+	  sumIoU += classIoUs[c];
+  }
+  double meanIoU = (numClasses > 0) ? (sumIoU / numClasses) : 0.0;
+
+  // Print mean IoU results for this image
+  cout << "Mean IoU for image " << path << ":" << endl;
+  for (int c = 0; c < 6; ++c) {
+	  cout << "Class " << c << " IoU: " << classIoUs[c] << endl;
+  }
+  cout << "Mean IoU: " << meanIoU << endl;
+
+  predBoxes = bbox_rectangles;
+
+  vector<Rect> gtBoxes;   // Ground truth bounding boxes for this image
+  vector<Rect> predBoxes; // Predicted bounding boxes for this image
+  vector<vector<int>> labels;
+  string labelPath = path + "/bounding_boxes/frame_first_bbox.txt";
+  bool success_label_reading = extractLabelsFromFile(labelPath, labels);
+  vector<ball_class> gt_classes(labels.size());
+  if (success_label_reading) {
+    for (int j = 0; j < labels.size(); j++) {
+      gt_classes[j] = int2ball_class(labels[j][4]);
+    }
+  } else {
+    cerr << "Failed to find all required labels in file: " << labelPath << endl;
+  }
+
+  // Load ground truth and predictions
+  loadGroundTruthAndPredictions(labels, gtBoxes);
+  predBoxes = bbox_rectangles;
+  Mat Bboxes_img = first_frame.clone();
+
+  // Visualize ground truth and predicted boxes
+  for (const auto &gtBox : gtBoxes) {
+    rectangle(Bboxes_img, gtBox, Scalar(0, 0, 255),
+              2); // Red rectangles for ground truth boxes
+  }
+  for (const auto &predBox : predBoxes) {
+    rectangle(Bboxes_img, predBox, Scalar(255, 0, 0),
+              2); // Blue rectangles for predicted boxes
+  }
+
+  imshow("Bounding Boxes", Bboxes_img);
+
+  //    cout << "Solid ball average precision" << averagePrecision << endl;
+
+  cout << computeMeanAP(gtBoxes, predBoxes, gt_classes, pred_classes) << endl;
+  drawMinimap(predBoxes, vertices, pred_classes);
+  track_balls(path, predBoxes, savevideo, savepath);
+  waitKey();
+  return 0;
+// >>>>>>> origin/tracking
 }

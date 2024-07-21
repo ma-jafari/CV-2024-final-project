@@ -81,30 +81,30 @@ double computeIoU(const Rect &gtBox, const Rect &predBox) {
 }
 
 // Compute IoU per class
-double ComputeIoUPerClass(const Mat& predMask, const Mat& gtMask, int classValue) {
-	// Initialize counters
-	int TP = 0, FP = 0, FN = 0;
+double ComputeIoUPerClass(const Mat &predMask, const Mat &gtMask,
+                          int classValue) {
+  // Initialize counters
+  int TP = 0, FP = 0, FN = 0;
 
-	for (int y = 0; y < predMask.rows; ++y) {
-		for (int x = 0; x < predMask.cols; ++x) {
-			uchar predValue = predMask.at<uchar>(y, x);
-			uchar gtValue = gtMask.at<uchar>(y, x);
+  for (int y = 0; y < predMask.rows; ++y) {
+    for (int x = 0; x < predMask.cols; ++x) {
+      uchar predValue = predMask.at<uchar>(y, x);
+      uchar gtValue = gtMask.at<uchar>(y, x);
 
-			if (predValue == classValue && gtValue == classValue) {
-				TP++;
-			}
-			else if (predValue == classValue && gtValue != classValue) {
-				FP++;
-			}
-			else if (predValue != classValue && gtValue == classValue) {
-				FN++;
-			}
-		}
-	}
+      if (predValue == classValue && gtValue == classValue) {
+        TP++;
+      } else if (predValue == classValue && gtValue != classValue) {
+        FP++;
+      } else if (predValue != classValue && gtValue == classValue) {
+        FN++;
+      }
+    }
+  }
 
-	// Compute IoU
-	if (TP + FP + FN == 0) return 0.0;
-	return static_cast<double>(TP) / (TP + FP + FN);
+  // Compute IoU
+  if (TP + FP + FN == 0)
+    return 0.0;
+  return static_cast<double>(TP) / (TP + FP + FN);
 }
 
 // Function to compute Precision and Recall for a single class specified by
@@ -155,7 +155,7 @@ void computePrecisionRecall(const vector<Rect> &gtBoxes,
         maxiou_index = j;
       }
     }
-    cout << "maxiou" << maxiou << ",";
+    // cout << "maxiou" << maxiou << ",";
     if (maxiou >= iouThreshold) {
       ++tp;
       // true positive, both IoU is above threshold and prediction is correct

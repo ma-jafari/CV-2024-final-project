@@ -273,13 +273,13 @@ Vec4Points detect_field(const cv::Mat &input_image, bool show_intermediate) {
     draw_hough_line(final_lines, rhoB, thetaB);
     draw_hough_line(final_lines, rhoC, thetaC);
     draw_hough_line(final_lines, rhoD, thetaD);
-    circle(final_lines, AC, 10, Scalar(255, 255, 10), LINE_8);
-    circle(final_lines, AD, 10, Scalar(255, 255, 10), LINE_8);
-    circle(final_lines, BC, 10, Scalar(255, 255, 10), LINE_8);
-    circle(final_lines, BD, 10, Scalar(255, 255, 10), LINE_8);
+    circle(final_lines, AC, 10, Scalar(255, 0, 10), LINE_8);
+    circle(final_lines, BC, 10, Scalar(0, 255, 100), LINE_8);
+    circle(final_lines, BD, 10, Scalar(0, 0, 255), LINE_8);
+    circle(final_lines, AD, 10, Scalar(255, 255, 255), LINE_8);
     imshow("table segm:final clustering", color_lines);
     imshow("table segm:final lines", final_lines);
   }
-  Vec4Points vertices(AC, BC, BD, AD);
+  Vec4Points vertices(AC, AD, BD, BC);
   return vertices;
 }

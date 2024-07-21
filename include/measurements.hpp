@@ -17,8 +17,7 @@ double computeAveragePrecision(const std::vector<Rect>& gtBoxes, const std::vect
 
 double ComputeIoUPerClass(const Mat& predMask, const Mat& gtMask, int classValue);
 
-double computeMeanIoU(const vector<Rect> &gtBoxes,
-                      const vector<Rect> &predBoxes);
+void ComputeMeanIoU(Mat frame, Mat gtMask, Vec4Points vertices, string path, vector<Mat> ballMasks);
 
 // Function to compute Average Precision (AP) using Pascal VOC 11-point
 // interpolation

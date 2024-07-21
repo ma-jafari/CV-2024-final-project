@@ -9,8 +9,8 @@
 #include <opencv2/core/utility.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
-#include <opencv2/tracking.hpp>
-#include <opencv2/tracking/tracking_legacy.hpp>
+//#include <opencv2/tracking.hpp>
+//#include <opencv2/tracking/tracking_legacy.hpp>
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/videoio.hpp>
 #include <string>
@@ -41,7 +41,7 @@ void track_balls(std::string path, std::vector<cv::Rect> bboxes, bool savevideo,
 
   std::vector<Ptr<Tracker>> trackers;
   for (const auto &bbox : bboxes) {
-    Ptr<Tracker> tracker = TrackerCSRT::create();
+    Ptr<Tracker> tracker;
     tracker->init(frame, bbox);
     trackers.push_back(tracker);
   }

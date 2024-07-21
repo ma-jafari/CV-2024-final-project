@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "ball_classification.hpp"
+#include "field_detection.hpp"
 
 using namespace std;
 using namespace cv;
@@ -65,21 +66,6 @@ void loadGroundTruthAndPredictions(const vector<vector<int>> &data,
   }
 }
 
-// Function to compute Intersection over Union (IoU)
-double computeIoU(const Rect &gtBox, const Rect &predBox) {
-  int x1 = max(gtBox.x, predBox.x);
-  int y1 = max(gtBox.y, predBox.y);
-  int x2 = min(gtBox.x + gtBox.width, predBox.x + predBox.width);
-  int y2 = min(gtBox.y + gtBox.height, predBox.y + predBox.height);
-
-  int intersectionArea = max(0, x2 - x1) * max(0, y2 - y1);
-  int gtBoxArea = gtBox.width * gtBox.height;
-  int predBoxArea = predBox.width * predBox.height;
-  int unionArea = gtBoxArea + predBoxArea - intersectionArea;
-
-  return static_cast<double>(intersectionArea) / unionArea;
-}
-
 // Compute IoU per class
 double ComputeIoUPerClass(const Mat& predMask, const Mat& gtMask, int classValue) {
 	// Initialize counters
@@ -89,6 +75,38 @@ double ComputeIoUPerClass(const Mat& predMask, const Mat& gtMask, int classValue
 		for (int x = 0; x < predMask.cols; ++x) {
 			uchar predValue = predMask.at<uchar>(y, x);
 			uchar gtValue = gtMask.at<uchar>(y, x);
+			if (predValue != 0 && predValue != 5 && predValue != 1 && predValue != 2) {
+				if (classValue != 0 && classValue != 5 && classValue != 1 && classValue != 2) {
+					/*					// Define the rectangle boundaries
+										int x_start = max(0, x - 50);
+										int y_start = max(0, y - 50);
+										int x_end = min(predMask.cols, x + 50);
+										int y_end = min(predMask.rows, y + 50);
+										Rect rect(x_start, y_start, x_end - x_start, y_end - y_start);
+
+										// Extract the rectangular regions
+										Mat predRect = predMask(rect);
+										Mat gtRect = gtMask(rect);
+
+										// Apply threshold to highlight the class value
+										Mat predRectThresh, gtRectThresh;
+										threshold(predRect, predRectThresh, classValue - 1, 255, THRESH_BINARY);
+										threshold(gtRect, gtRectThresh, classValue - 1, 255, THRESH_BINARY);
+
+										// Draw a red dot at the center of the rectangle
+										Point center(predRect.cols / 2, predRect.rows / 2);
+										circle(predRectThresh, center, 3, Scalar(0, 0, 255), -1);
+										circle(gtRectThresh, center, 3, Scalar(0, 0, 255), -1);
+
+										// Combine the two regions horizontally
+										Mat combined;
+										hconcat(predRectThresh, gtRectThresh, combined);
+
+										// Display the combined image
+										imshow("Predicted vs Ground Truth", combined);
+										waitKey(0); // Wait for a key press to close the window*/
+				}
+			}
 
 			if (predValue == classValue && gtValue == classValue) {
 				TP++;
@@ -104,7 +122,64 @@ double ComputeIoUPerClass(const Mat& predMask, const Mat& gtMask, int classValue
 
 	// Compute IoU
 	if (TP + FP + FN == 0) return 0.0;
-	return static_cast<double>(TP) / (TP + FP + FN);
+	return static_cast<double>(TP) / (static_cast<double>(TP) + static_cast<double>(FP) + static_cast<double>(FN));
+}
+
+// Function to compute Intersection over Union (IoU)
+double computeIoU(const Rect &gtBox, const Rect &predBox) {
+  int x1 = max(gtBox.x, predBox.x);
+  int y1 = max(gtBox.y, predBox.y);
+  int x2 = min(gtBox.x + gtBox.width, predBox.x + predBox.width);
+  int y2 = min(gtBox.y + gtBox.height, predBox.y + predBox.height);
+
+  int intersectionArea = max(0, x2 - x1) * max(0, y2 - y1);
+  int gtBoxArea = gtBox.width * gtBox.height;
+  int predBoxArea = predBox.width * predBox.height;
+  int unionArea = gtBoxArea + predBoxArea - intersectionArea;
+
+  return static_cast<double>(intersectionArea) / unionArea;
+}
+
+void ComputeMeanIoU(Mat frame, Mat gtMask, Vec4Points vertices, string path, vector<Mat> ballClasses){
+	// Create the combined mask
+	Mat combinedMask = Mat::zeros(frame.size(), CV_8UC1);
+
+	// Set field pixels to 5
+	Mat fieldMask = Mat::zeros(frame.size(), CV_8UC1);
+	fillPoly(fieldMask, vertices, Scalar(255));
+	combinedMask.setTo(Scalar(5), fieldMask);
+
+	// Overlay ball masks with respective values
+	Mat ballMasks[4] = { ballClasses[0], ballClasses[1], ballClasses[2], ballClasses[3] };
+	int values[4] = { 1, 2, 3, 4 };
+
+	for (int k = 0; k < 4; ++k) {
+		Mat ballMask = ballMasks[k];
+		Mat resizedBallMask;
+		resize(ballMask, resizedBallMask, combinedMask.size(), 0, 0, INTER_NEAREST);
+		combinedMask.setTo(Scalar(values[k]), resizedBallMask);
+	}
+
+	// Compute IoU for each class
+	vector<double> classIoUs(6, 0.0);
+	for (int c = 0; c < 6; ++c) {
+		classIoUs[c] = ComputeIoUPerClass(combinedMask, gtMask, c);
+	}
+
+	// Compute mean IoU for this image manually
+	double sumIoU = 0.0;
+	int numClasses = classIoUs.size();
+	for (int c = 0; c < numClasses; ++c) {
+		sumIoU += classIoUs[c];
+	}
+	double meanIoU = (numClasses > 0) ? (sumIoU / numClasses) : 0.0;
+
+	// Print mean IoU results for this image
+	cout << "Mean IoU for image " << path << ":" << endl;
+	for (int c = 0; c < 6; ++c) {
+		cout << "Class " << c << " IoU: " << classIoUs[c] << endl;
+	}
+	cout << "Mean IoU: " << meanIoU << endl;
 }
 
 // Function to compute Precision and Recall for a single class specified by
